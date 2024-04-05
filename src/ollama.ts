@@ -1,55 +1,26 @@
-import axios from 'axios'
-import { logError } from './misc'
+import { logError, parseEnvString } from './misc'
 
-const servers = process.env.OLLAMA!.split(',').map(url => ({ url: new URL(url), available: true }))
+const ollamaURL = process.env.OLLAMA_URL!
+const system = parseEnvString(process.env.SYSTEM!)
+const model = process.env.MODEL!
 
-if (servers.length === 0)
-  throw new Error('No servers available')
-
-export async function makeRequest(path, method, data) {
-  while (servers.filter(server => server.available).length === 0) {
-    // wait until a server is available
-    await new Promise(res => setTimeout(res, 1000))
+export async function generate(prompt, context) {
+  try {
+    const resp = await fetch(`${ollamaURL}/api/generate`, {
+      method: 'post',
+      body: JSON.stringify({
+        model,
+        prompt,
+        context,
+        system,
+        stream: false,
+      }),
+      headers: { "Content-Type": "application/json" },
+    })
+    return await resp.json()
   }
-
-  let error = null
-  const order = Array.from({ length: servers.length }).map((_, i) => i)
-  for (const j in order) {
-    if (!order.hasOwnProperty!(j))
-      continue
-    const i = order[j]
-    // try one until it succeeds
-    try {
-      // make a request to ollama
-      if (!servers[i].available)
-        continue
-      const url = new URL(servers[i].url) // don't modify the original URL
-
-      servers[i].available = false
-
-      if (path.startsWith('/'))
-        path = path.substring(1)
-      if (!url.pathname.endsWith('/'))
-        url.pathname += '/' // safety
-      url.pathname += path
-      console.debug(`Making request to ${url}`)
-      const result = await axios({
-        method,
-        url,
-        data,
-        responseType: 'text',
-      })
-      servers[i].available = true
-      return result.data
-    }
-    catch (err) {
-      servers[i].available = true
-      error = err
-      logError(error)
-    }
+  catch (error) {
+    logError(error)
+    throw error
   }
-  if (!error)
-    throw new Error('No servers available')
-
-  throw error
 }

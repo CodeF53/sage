@@ -1,13 +1,10 @@
 import type { Message } from 'discord.js'
 import { MessageType } from 'discord.js'
 import { client, messages } from './bot'
-import { getBoolean, logError, parseEnvString, replySplitMessage } from './misc'
-import { makeRequest } from './ollama'
+import { getBoolean, logError, replySplitMessage } from './misc'
+import { generate } from './ollama'
 
-const model = process.env.MODEL!
 const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
-const systemMessage = parseEnvString(process.env.SYSTEM)
-
 const requiresMention = getBoolean(process.env.REQUIRES_MENTION!)
 
 function cleanUserInput(message: Message) {
@@ -101,21 +98,7 @@ export async function aiRespond(message: Message, channelID: string) {
         context = messages[channelID].last
 
       // make request to model
-      response = (await makeRequest('/api/generate', 'post', {
-        model,
-        prompt: userInput,
-        system: systemMessage,
-        context,
-      }))
-
-      if (typeof response != 'string') {
-        console.debug(response)
-        throw new TypeError('response is not a string, this may be an error with ollama')
-      }
-
-      response = response.split('\n').filter(e => !!e).map((e) => {
-        return JSON.parse(e)
-      })
+      response = (await generate(userInput, context))
     }
     catch (error) {
       if (typingInterval != null)
@@ -130,17 +113,16 @@ export async function aiRespond(message: Message, channelID: string) {
 
     typingInterval = null
 
-    let responseText = response.map(e => e.response).filter(e => e != null).join('').trim()
-    if (responseText.length === 0)
+    let responseText = response.response
+    if (response.length === 0)
       responseText = '(No response)'
-
     console.debug(`Response: ${responseText}`)
 
     // reply (will automatically stop typing)
     const replyMessageIDs = (await replySplitMessage(message, responseText)).map((msg: Message) => msg.id)
 
     // add response to conversation
-    context = response.filter(e => e.done && e.context)[0].context
+    context = response.context
     for (let i = 0; i < replyMessageIDs.length; ++i)
       messages[channelID][replyMessageIDs[i]] = context
 
