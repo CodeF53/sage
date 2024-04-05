@@ -1,5 +1,5 @@
 import type { Message } from 'discord.js'
-import { MessageType } from 'discord.js'
+import { ChannelType, MessageType } from 'discord.js'
 import { client, messages } from './bot'
 import { getBoolean, logError, replySplitMessage } from './misc'
 import { generate } from './ollama'
@@ -103,7 +103,7 @@ export async function aiRespond(message: Message, channelID: string) {
         context = messages[channelID].last
 
       // make request to model
-      response = (await generate(userInput, context))
+      response = (await generate(`${userInput}`, context))
     }
     catch (error) {
       if (typingInterval != null)
@@ -122,6 +122,29 @@ export async function aiRespond(message: Message, channelID: string) {
     if (response.length === 0)
       responseText = '(No response)'
     console.debug(`Response: ${responseText}`)
+
+    // convert channel mentions and pings to proper <@280411966126948353> syntax
+    responseText = responseText
+      .replace(/@([\w\-]{3,})/g, (_, username: string) => {
+        if (username === message.author.username)
+          return `<@${message.author.id}>`
+        if (message.guild) {
+          const member = message.guild.members.cache.find(({ user }) => user.username === username)
+          if (!member)
+            return username
+          return `<@${member.user.id}>`
+        }
+      })
+      .replace(/#([\w\-]+)/g, (_, channelName: string) => {
+        if ([ChannelType.DM, ChannelType.GroupDM].includes(message.channel.type))
+          return `#${channelName}`
+        if (channelName === message.channel.name || !message.guild)
+          return `<#${message.channelId}>`
+        const channel = message.guild.channels.cache.find(a => a.name === channelName)
+        if (!channel)
+          return `#${channelName}`
+        return `<#${channel.id}>`
+      })
 
     // reply (will automatically stop typing)
     const replyMessageIDs = (await replySplitMessage(message, responseText)).map((msg: Message) => msg.id)
