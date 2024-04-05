@@ -1,6 +1,7 @@
 import { Client, Events, GatewayIntentBits, MessageType, Partials } from 'discord.js'
 import { LogLevel, Logger } from 'meklog'
 import axios from 'axios'
+import { handleDotCommand } from './dotCommands'
 
 const model = process.env.MODEL
 const servers = process.env.OLLAMA.split(',').map(url => ({ url: new URL(url), available: true }))
@@ -97,7 +98,7 @@ client.once(Events.ClientReady, async () => {
   client.user.setPresence({ activities: [], status: 'online' })
 })
 
-const messages = {}
+export const messages = {}
 
 // split text so it fits in a Discord message
 function splitText(str, length) {
@@ -197,123 +198,58 @@ client.on(Events.MessageCreate, async (message) => {
   let typing = false
   try {
     await message.fetch()
-
-    // return if not in the right channel
     const channelID = message.channel.id
-
-    // return if user is a bot, or non-default message
-    if (!message.author.id)
-      return
-    if (message.author.bot || message.author.id == client.user.id)
-      return
-
-    const botRole = message.guild?.members?.me?.roles?.botRole
-    const myMention = new RegExp(`<@((!?${client.user.id}${botRole ? `)|(&${botRole.id}` : ''}))>`, 'g') // RegExp to match a mention for the bot
-
-    if (typeof message.content !== 'string' || message.content.length === 0)
+    // ignore dumb messages
+    if (!message.author.id || message.author.id === client.user.id
+      || typeof message.content !== 'string' || message.content.length === 0
+      || ![MessageType.Reply, MessageType.Default].includes(message.type))
       return
 
+    let userInput = message.content.trim()
+    // handle dot commands
+    if (userInput.startsWith('.'))
+      return handleDotCommand(message, userInput, channelID)
+
+    // get context for replies
     let context = null
-    if (message.type == MessageType.Reply) {
+    if (message.type === MessageType.Reply) {
       const reply = await message.fetchReference()
       if (!reply)
         return
-      if (reply.author.id != client.user.id)
+      if (reply.author.id !== client.user.id)
         return
-      if (messages[channelID] == null)
+      if (!messages[channelID])
         return
-      if ((context = messages[channelID][reply.id]) == null)
+      context = messages[channelID][reply.id]
+      if (!context)
         return
     }
-    else if (message.type != MessageType.Default) {
-      return
-    }
 
-    // fetch info about the model like the template and system message
-    if (modelInfo == null) {
-      modelInfo = (await makeRequest('/api/show', 'post', {
-        name: model,
-      }))
-      if (typeof modelInfo === 'string')
-        modelInfo = JSON.parse(modelInfo)
-      if (typeof modelInfo !== 'object')
-        throw 'failed to fetch model information'
-    }
-
-    const systemMessages = []
-
-    if (useModelSystemMessage && modelInfo.system)
-      systemMessages.push(modelInfo.system)
-
-    if (useCustomSystemMessage)
-      systemMessages.push(customSystemMessage)
-
-    // join them together
-    const systemMessage = systemMessages.join('\n\n')
-
-    // deal with commands first before passing to LLM
-    let userInput = message.content
-      .replace(new RegExp(`^\s*${myMention.source}`, ''), '').trim()
-
-    // may change this to slash commands in the future
-    // i'm using regular text commands currently because the bot interacts with text content anyway
-    if (userInput.startsWith('.')) {
-      const args = userInput.substring(1).split(/\s+/g)
-      const cmd = args.shift()
-      switch (cmd) {
-        case 'reset':
-        case 'clear':
-          if (messages[channelID] != null) {
-            // reset conversation
-            const cleared = messages[channelID].amount
-
-            // clear
-            delete messages[channelID]
-
-            if (cleared > 0) {
-              await message.reply({ content: `Cleared conversation of ${cleared} messages` })
-              break
-            }
-          }
-          await message.reply({ content: 'No messages to clear' })
-          break
-        case 'help':
-        case '?':
-        case 'h':
-          await message.reply({ content: 'Commands:\n- `.reset` `.clear`\n- `.help` `.?` `.h`\n- `.ping`\n- `.model`\n- `.system`' })
-          break
-        case 'model':
-          await message.reply({
-            content: `Current model: ${model}`,
-          })
-          break
-        case 'system':
-          await replySplitMessage(message, `System message:\n\n${systemMessage}`)
-          break
-        case 'ping':
-          // get ms difference
-          const beforeTime = Date.now()
-          const reply = await message.reply({ content: 'Ping' })
-          const afterTime = Date.now()
-          const difference = afterTime - beforeTime
-          await reply.edit({ content: `Ping: ${difference}ms` })
-          break
-        case '':
-          break
-        default:
-          await message.reply({ content: 'Unknown command, type `.help` for a list of commands' })
-          break
-      }
-      return
-    }
-
-    if (message.type == MessageType.Default && (requiresMention && message.guild && !message.content.match(myMention)))
+    const botRole = message.guild?.members?.me?.roles?.botRole
+    const myMention = new RegExp(`<@((!?${client.user.id}${botRole ? `)|(&${botRole.id}` : ''}))>`, 'g') // RegExp to match a mention for the bot
+    if (message.type === MessageType.Default && (requiresMention && message.guild && !message.content.match(myMention)))
       return
 
     if (message.guild) {
       await message.guild.channels.fetch()
       await message.guild.members.fetch()
     }
+
+    // fetch info about the model like the template and system message
+    if (modelInfo == null) {
+      modelInfo = (await makeRequest('/api/show', 'post', { name: model }))
+      if (typeof modelInfo === 'string')
+        modelInfo = JSON.parse(modelInfo)
+      if (typeof modelInfo !== 'object')
+        throw new Error('failed to fetch model information')
+    }
+
+    const systemMessages = []
+    if (useModelSystemMessage && modelInfo.system)
+      systemMessages.push(modelInfo.system)
+    if (useCustomSystemMessage)
+      systemMessages.push(customSystemMessage)
+    const systemMessage = systemMessages.join('\n')
 
     userInput = userInput
       .replace(myMention, '')
@@ -340,7 +276,7 @@ client.on(Events.MessageCreate, async (message) => {
       })
       .trim()
 
-    if (userInput.length == 0)
+    if (userInput.length === 0)
       return
 
     // create conversation
@@ -354,13 +290,10 @@ client.on(Events.MessageCreate, async (message) => {
     typing = true
     await message.channel.sendTyping()
     let typingInterval = setInterval(async () => {
-      try {
-        await message.channel.sendTyping()
-      }
+      try { await message.channel.sendTyping() }
       catch (error) {
         if (typingInterval != null)
           clearInterval(typingInterval)
-
         typingInterval = null
       }
     }, 7000)
@@ -407,7 +340,7 @@ client.on(Events.MessageCreate, async (message) => {
     typingInterval = null
 
     let responseText = response.map(e => e.response).filter(e => e != null).join('').trim()
-    if (responseText.length == 0)
+    if (responseText.length === 0)
       responseText = '(No response)'
 
     log(LogLevel.Debug, `Response: ${responseText}`)
@@ -425,11 +358,8 @@ client.on(Events.MessageCreate, async (message) => {
   }
   catch (error) {
     if (typing) {
-      try {
-        // return error
-        await message.reply({ content: 'Error, please check the console' })
-      }
-      catch (ignored) {}
+      try { await message.reply({ content: 'Error, please tell @f53 to check the console' }) }
+      catch {}
     }
     logError(error)
   }
