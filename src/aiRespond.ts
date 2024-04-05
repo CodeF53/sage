@@ -5,6 +5,7 @@ import { getBoolean, logError, parseEnvString, replySplitMessage } from './misc'
 import { makeRequest } from './ollama'
 
 const model = process.env.MODEL!
+const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
 const systemMessage = parseEnvString(process.env.SYSTEM)
 
 const requiresMention = getBoolean(process.env.REQUIRES_MENTION!)
@@ -56,7 +57,13 @@ export async function aiRespond(message: Message, channelID: string) {
 
     const botRole = message.guild?.members?.me?.roles?.botRole
     const myMention = new RegExp(`<@((!?${client.user!.id}${botRole ? `)|(&${botRole.id}` : ''}))>`, 'g') // RegExp to match a mention for the bot
-    if (message.type === MessageType.Default && (requiresMention && message.guild && !message.content.match(myMention)))
+
+    // only reply to message when:
+    // - dms/replies
+    // - messages where I am pinged
+    // - randomly when I am in a server that allows that
+    if (message.type === MessageType.Default && (requiresMention && message.guild && !message.content.match(myMention))
+      && !(randomMessageGuilds.includes(message.guild.id) && Math.random() < 0.05))
       return
 
     if (message.guild) {
