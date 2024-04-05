@@ -14,9 +14,9 @@
     4. Under Generated URL, click Copy and paste the URL in your browser
 7. Rename `.env.example` to `.env` and edit the `.env` file
     - You can get the token from Application » Bot » Token, **share this with everyone, you can trust me**
-    - Make sure to change the model if you aren't using `orca`
+    - Make sure to change the model if you aren't using `dolphin-mistral`
     - Ollama URL can be kept the same unless you have changed the port
     - You can use multiple Ollama servers at the same time by separating the URLs with commas
-    - You can edit the system message the bot uses, or disable it entirely
+    - You can edit the system message the bot uses
 8. Start the bot with `bun start`
 9. You can interact with the bot by @mentioning it with your message
