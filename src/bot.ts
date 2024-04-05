@@ -36,7 +36,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     // handle dot commands
     if (message.content.startsWith('.'))
-      return handleDotCommand(message, userInput, channelID)
+      return handleDotCommand(message, channelID)
 
     return aiRespond(message, channelID)
   }

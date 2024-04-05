@@ -2,11 +2,11 @@ import { type Message, MessageType } from 'discord.js'
 import { messages } from './bot'
 
 // TODO: migrate to slash commands in the future
-export async function handleDotCommand(message: Message, userInput: string, channelID) {
+export async function handleDotCommand(message: Message, channelID) {
   if (message.type === MessageType.Reply)
     return
 
-  const args = userInput.substring(1).split(/\s+/g)
+  const args = message.content.trim().substring(1).split(/\s+/g)
   const cmd = args.shift()
   switch (cmd) {
     case 'reset':
