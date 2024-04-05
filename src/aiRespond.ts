@@ -7,8 +7,9 @@ import { generate } from './ollama'
 const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
 const requiresMention = getBoolean(process.env.REQUIRES_MENTION!)
 
-function cleanUserInput(message: Message) {
-  return message.content
+function messageToStr(message: Message) {
+  const cleanedContent = message.content
+    // replace #channel mentions with strings (normally its like <#1082142594567516160>)
     .replace(/<#([0-9]+)>/g, (_, id) => {
       if (message.guild) {
         const chn = message.guild.channels.cache.get(id)
@@ -17,8 +18,9 @@ function cleanUserInput(message: Message) {
       }
       return '#unknown-channel'
     })
+    // replace @user mentions with strings (normally its like <@280411966126948353>)
     .replace(/<@!?([0-9]+)>/g, (_, id) => {
-      if (id == message.author.id)
+      if (id === message.author.id)
         return message.author.username
       if (message.guild) {
         const mem = message.guild.members.cache.get(id)
@@ -27,10 +29,13 @@ function cleanUserInput(message: Message) {
       }
       return '@unknown-user'
     })
-    .replace(/<:([a-zA-Z0-9_]+):([0-9]+)>/g, (_, name) => {
-      return `emoji:${name}:`
-    })
+    // replace emoji with strings (you get it)
+    .replace(/<:([a-zA-Z0-9_]+):([0-9]+)>/g, (_, name) => { return `emoji:${name}:`})
     .trim()
+
+  const dt = message.createdAt
+  const timeStr = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()} ${dt.getHours()}:${dt.getMinutes()}`
+  return `@${message.author.username} - at ${timeStr}\n${cleanedContent}`
 }
 
 export async function aiRespond(message: Message, channelID: string) {
@@ -68,7 +73,7 @@ export async function aiRespond(message: Message, channelID: string) {
       await message.guild.members.fetch()
     }
 
-    const userInput = cleanUserInput(message)
+    const userInput = messageToStr(message)
     if (userInput.length === 0)
       return
 
