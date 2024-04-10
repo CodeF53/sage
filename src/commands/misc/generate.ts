@@ -16,6 +16,16 @@ export const data = new SlashCommandBuilder()
     option.setName('negative_prompt')
       .setDescription('what you don\'t want')
       .setMaxLength(5_000))
+  .addNumberOption(option =>
+    option.setName('width')
+      .setDescription('width of image to generate (default 1024)')
+      .setMinValue(512)
+      .setMaxValue(2048))
+  .addNumberOption(option =>
+    option.setName('height')
+      .setDescription('height of image to generate (default 1024)')
+      .setMinValue(512)
+      .setMaxValue(2048))
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const prompt = interaction.options.getString('prompt')!
@@ -35,8 +45,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       negative_prompt: `${negative_prompt}, loli, child, young`,
       steps: 8,
       cfg_scale: 3,
-      width: 1024,
-      height: 1024,
+      width: interaction.options.getNumber('width') ?? 1024,
+      height: interaction.options.getNumber('height') ?? 1024,
       sampler_index: 'Euler A SGMUniform',
       send_images: true,
       save_images: false,
