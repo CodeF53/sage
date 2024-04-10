@@ -19,9 +19,13 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const prompt = interaction.options.getString('prompt')!
-  const negative_prompt = interaction.options.getString('negative prompt') ?? ''
+  let negative_prompt = interaction.options.getString('negative_prompt') ?? ''
 
-  const reply = interaction.reply({ content: 'generating...' })
+  // prevent generating nsfw unless explicitly requested
+  if (!/\bnsfw\b/i.test(prompt))
+    negative_prompt = `nsfw, nude, fully nude, ${negative_prompt}`
+
+  const replyPromise = interaction.reply({ content: 'generating...' })
 
   const resp = await fetch(`${sdURL}/sdapi/v1/txt2img`, {
     method: 'POST',
@@ -38,7 +42,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       save_images: false,
     }),
   })
-  const { images } = await resp.json();
+  const { images } = await resp.json()
 
-  (await reply).edit({ content: prompt, files: [{ attachment: new Buffer.from(images[0], 'base64') }] })
+  let content = `\`${prompt}\``
+  if ((interaction.options.getString('negative_prompt') ?? '').length > 0)
+    content += `\n\nnegative: \`${negative_prompt}\``
+
+  const reply = await replyPromise
+  reply.edit({ content, files: [{ attachment: new Buffer.from(images[0], 'base64') }] })
 }
