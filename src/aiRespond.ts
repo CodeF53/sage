@@ -161,7 +161,7 @@ export async function aiRespond(message: Message, channelID: string) {
   }
   catch (error) {
     if (typing) {
-      try { await message.reply({ content: 'Error, please tell @f53 to check the console' }) }
+      try { message.reply({ content: 'Error, please tell <@280411966126948353> to check the console' }) }
       catch {}
     }
     logError(error)
