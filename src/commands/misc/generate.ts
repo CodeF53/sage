@@ -26,6 +26,18 @@ export const data = new SlashCommandBuilder()
       .setDescription('height of image to generate (default 1024)')
       .setMinValue(512)
       .setMaxValue(2048))
+  .addNumberOption(option =>
+    option.setName('quantity')
+      .setDescription('number of images to generate')
+      .setMinValue(1)
+      .setMaxValue(4))
+
+function formatImages(images: string[]) {
+  const out = []
+  for (const image of images)
+    out.push({ attachment: new Buffer.from(image, 'base64') })
+  return out
+}
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const prompt = interaction.options.getString('prompt')!
@@ -47,6 +59,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       cfg_scale: 3,
       width: interaction.options.getNumber('width') ?? 1024,
       height: interaction.options.getNumber('height') ?? 1024,
+      batch_size: interaction.options.getNumber('quantity') ?? 1,
       sampler_index: 'Euler A SGMUniform',
       send_images: true,
       save_images: false,
@@ -59,5 +72,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     content += `\n\nnegative: \`${negative_prompt}\``
 
   const reply = await replyPromise
-  reply.edit({ content, files: [{ attachment: new Buffer.from(images[0], 'base64') }] })
+  reply.edit({ content, files: formatImages(images) })
 }
