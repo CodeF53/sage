@@ -32,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt: `${defaultPrompt}, ${prompt}`,
-      negative_prompt,
+      negative_prompt: `${negative_prompt}, loli, child, young`,
       steps: 8,
       cfg_scale: 3,
       width: 1024,
