@@ -33,7 +33,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   // prevent generating nsfw unless explicitly requested
   if (!/\bnsfw\b/i.test(prompt))
-    negative_prompt = `nsfw, nude, fully nude, ${negative_prompt}`
+    negative_prompt = `nsfw, nude, fully nude, partial nudity, explicit, ${negative_prompt}`
 
   const replyPromise = interaction.reply({ content: 'generating...' })
 
