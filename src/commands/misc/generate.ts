@@ -31,6 +31,11 @@ export const data = new SlashCommandBuilder()
       .setDescription('number of images to generate')
       .setMinValue(1)
       .setMaxValue(4))
+  .addNumberOption(option =>
+    option.setName('seed')
+      .setDescription('seed for RNG')
+      .setMinValue(1)
+      .setMaxValue(Number.MAX_SAFE_INTEGER))
 
 function formatImages(images: string[]) {
   const out = []
@@ -57,6 +62,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       negative_prompt: `${negative_prompt}, loli, child, young`,
       steps: 8,
       cfg_scale: 3,
+      seed: interaction.options.getNumber('seed') ?? -1,
       width: interaction.options.getNumber('width') ?? 1024,
       height: interaction.options.getNumber('height') ?? 1024,
       batch_size: interaction.options.getNumber('quantity') ?? 1,
@@ -65,9 +71,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       save_images: false,
     }),
   })
-  const { images } = await resp.json()
+  const data = await resp.json()
+  const { images } = data
+  const info = JSON.parse(data.info)
 
-  let content = `\`${prompt}\``
+  let content = `\`${prompt}\`\nseed(s): [${info.all_seeds}]`
   if ((interaction.options.getString('negative_prompt') ?? '').length > 0)
     content += `\n\nnegative: \`${negative_prompt}\``
 
