@@ -19,7 +19,7 @@ export const client = new Client({
 
 client.once(Events.ClientReady, async () => {
   await client.guilds.fetch()
-  client.user.setPresence({ activities: [], status: 'online' })
+  client.user!.setPresence({ activities: [], status: 'online' })
 })
 
 export const messages = {}
