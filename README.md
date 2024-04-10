@@ -13,7 +13,8 @@
     3. Enable Send Messages, Read Messages/View Channels, and Read Message History
     4. Under Generated URL, click Copy and paste the URL in your browser
 7. Rename `.env.example` to `.env` and edit the `.env` file
-    - You can get the token from Application » Bot » Token, **share this with everyone, you can trust me**
+    - You can get the token from Application > Bot > Token
+    - Get APP_ID from Application > General Information > Application ID
     - Make sure to change the model if you aren't using `dolphin-mistral`
     - Ollama URL can be kept the same unless you have changed the port
     - You can use multiple Ollama servers at the same time by separating the URLs with commas

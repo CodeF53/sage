@@ -1,6 +1,6 @@
 import type { Message } from 'discord.js'
 import { ChannelType, MessageType } from 'discord.js'
-import { client, messages } from './bot'
+import { client } from './bot'
 import { getBoolean, logError, replySplitMessage } from './misc'
 import { generate } from './ollama'
 
@@ -37,6 +37,8 @@ function messageToStr(message: Message) {
   const timeStr = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()} ${dt.getHours()}:${dt.getMinutes()}`
   return `@${message.author.username} - at ${timeStr}\n${cleanedContent}`
 }
+
+export const messages = {}
 
 export async function aiRespond(message: Message, channelID: string) {
   let typing = false
