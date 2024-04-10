@@ -67,7 +67,7 @@ export async function aiRespond(message: Message, channelID: string) {
     // - messages where I am pinged
     // - randomly when I am in a server that allows that
     if (message.type === MessageType.Default && (requiresMention && message.guild && !message.content.match(myMention))
-      && !(randomMessageGuilds.includes(message.guild.id) && Math.random() < 0.05))
+      && !(randomMessageGuilds.includes(message.guild.id) && Math.random() < 0.01))
       return
 
     if (message.guild) {
