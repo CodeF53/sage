@@ -1,28 +1,32 @@
-import { logError, parseEnvString } from './misc'
-
 const ollamaURL = process.env.OLLAMA_URL!
-const temperature = Number(process.env.OLLAMA_TEMP!)
-const system = parseEnvString(process.env.SYSTEM!)
-const model = process.env.MODEL!
+const system = process.env.SYSTEM!
+const model = process.env.OLLAMA_MODEL!
 
-export async function generate(prompt, context) {
-  try {
-    const resp = await fetch(`${ollamaURL}/api/generate`, {
-      method: 'post',
-      body: JSON.stringify({
-        model,
-        prompt,
-        context,
-        system,
-        stream: false,
-        options: { temperature }
-      }),
-      headers: { "Content-Type": "application/json" },
-    })
-    return await resp.json()
-  }
-  catch (error) {
-    logError(error)
-    throw error
-  }
+export interface LLMMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+const sys = `<|im_start|>system \n${system}<|im_end|>`
+
+export async function generate(messages: LLMMessage[], username: string) {
+  const context = messages.map(({ role, content }) => `<|im_start|>${role} \n${content}<|im_end|>`).join('\n{{ end }}')
+  const ass = `<|im_start|>assistant \n@${username}:`
+
+  const prompt = [sys, context, ass].join('\n{{ end }}')
+
+  const resp = await fetch(`${ollamaURL}/api/generate`, {
+    method: 'post',
+    body: JSON.stringify({
+      model,
+      raw: true,
+      prompt,
+      stream: false,
+    }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+  const data = await resp.json()
+  if ((data.response as string).includes('{{ end }}'))
+    return generate(messages, username)
+  return data
 }

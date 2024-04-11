@@ -1,6 +1,5 @@
 import './commands/deployCommands' // register commands with discord
 import { Client, Events, GatewayIntentBits, MessageType, Partials } from 'discord.js'
-import { handleDotCommand } from './dotCommands'
 import { aiRespond } from './aiRespond'
 import { logError } from './misc'
 import { initCommands } from './commands/commandHandler'
@@ -29,14 +28,13 @@ client.once(Events.ClientReady, async () => {
 client.on(Events.MessageCreate, async (message) => {
   try {
     await message.fetch()
-    const channelID = message.channel.id
     // ignore dumb messages
     if (!message.author.id || message.author.id === client!.user!.id
       || typeof message.content !== 'string' || message.content.length === 0
       || ![MessageType.Reply, MessageType.Default].includes(message.type))
       return
 
-    return aiRespond(message, channelID)
+    return aiRespond(message)
   }
   catch (error) { logError(error) }
 })

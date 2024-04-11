@@ -1,20 +1,5 @@
 import type { Message } from 'discord.js'
 
-export function parseJSONMessage(str) {
-  return str.split(/[\r\n]+/g).map((line) => {
-    const result = JSON.parse(`"${line}"`)
-    if (typeof result !== 'string')
-      throw new Error('Invalid syntax in .env file')
-    return result
-  }).join('\n')
-}
-
-export function parseEnvString(str) {
-  return typeof str === 'string'
-    ? parseJSONMessage(str).replace(/<date>/gi, new Date().toUTCString())
-    : null
-}
-
 export function logError(error: any) {
   if (error.response) {
     let str = `Error ${error.response.status} ${error.response.statusText}: ${error.request.method} ${error.request.path}`

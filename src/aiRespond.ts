@@ -2,12 +2,13 @@ import type { Message } from 'discord.js'
 import { ChannelType, MessageType } from 'discord.js'
 import { client } from './bot'
 import { logError, replySplitMessage } from './misc'
+import type { LLMMessage } from './ollama'
 import { generate } from './ollama'
 
 const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
 
-function messageToStr(message: Message) {
-  const cleanedContent = message.content
+function formatMessage(message: Message): LLMMessage {
+  const text = message.content
     // replace #channel mentions with strings (normally its like <#1082142594567516160>)
     .replace(/<#([0-9]+)>/g, (_, id) => {
       if (message.guild) {
@@ -31,8 +32,13 @@ function messageToStr(message: Message) {
     // replace emoji with strings (you get it)
     .replace(/<:([a-zA-Z0-9_]+):([0-9]+)>/g, (_, name) => { return `emoji:${name}:` })
     .trim()
+  const content = `@${message.author.username}:${text}`
 
-  return `@${message.author.username}:${cleanedContent}`
+  let role = 'user'
+  if (message.author.id === client.user!.id)
+    role = 'assistant'
+
+  return { role, content }
 }
 
 // convert channel mentions and pings to proper <@280411966126948353> syntax
@@ -62,40 +68,27 @@ function formatResponse(response: string, message: Message) {
     })
 }
 
-export const messages = {}
-
-export async function aiRespond(message: Message, channelID: string) {
-  let typing = false
+export async function aiRespond(message: Message) {
+  let typingInterval: Timer | null = null
 
   try {
-    // get context for replies
-    let context = null
-    if (message.type === MessageType.Reply) {
-      const reply = await message.fetchReference()
-      if (!reply)
-        return
-      if (reply.author.id !== client.user!.id)
-        return
-      if (!messages[channelID])
-        return
-      context = messages[channelID][reply.id]
-      if (!context)
-        return
-    }
-
-    const botRole = message.guild?.members?.me?.roles?.botRole
-    const myMention = new RegExp(`<@((!?${client.user!.id}${botRole ? `)|(&${botRole.id}` : ''}))>`, 'g')
+    const myMention = new RegExp(`<@${client.user!.id}>`, 'g')
 
     // only reply to:
-    // - replies & dms
-    let shouldReply = message.type === MessageType.Reply || !message.guild
+    // - dms
+    let shouldReply = !message.guild
+    // - replies to my messages
+    if (message.type === MessageType.Reply) {
+      const reply = await message.fetchReference()
+      if (reply.author.id === client.user!.id)
+        shouldReply = true
+    }
     // - pings
     if (message.content.match(myMention))
       shouldReply = true
     // - randomly when I am in a server that allows that
     if (randomMessageGuilds.includes(message.guild!.id) && Math.random() < 0.01)
       shouldReply = true
-
     if (!shouldReply)
       return
 
@@ -105,71 +98,37 @@ export async function aiRespond(message: Message, channelID: string) {
       await message.guild.members.fetch()
     }
     // develop chat context
-    const chatMessages = [message, ...(await message.channel.messages.fetch({ limit: 4, before: message.id })).values()]
-      .reverse().map(messageToStr).join('</s>\n')
-    const channelName = message.guild ? `#${message.channel.name}` : 'DMs'
-    const chat = `discord chat in ${channelName}\n\n${chatMessages}</s>\n@${client.user!.username}:`
-    console.debug(chat)
-
-    // create conversation
-    if (messages[channelID] == null)
-      messages[channelID] = { amount: 0, last: null }
+    const messages = [message, ...(await message.channel.messages.fetch({ limit: 4, before: message.id })).values()]
+      .reverse().map(formatMessage)!
+    messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
 
     // start typing
-    typing = true
-    await message.channel.sendTyping()
-    let typingInterval: Timer | null = setInterval(async () => {
+    message.channel.sendTyping()
+    typingInterval = setInterval(async () => {
       try { await message.channel.sendTyping() }
       catch (error) {
-        if (typingInterval != null)
+        if (typingInterval)
           clearInterval(typingInterval)
         typingInterval = null
       }
     }, 7000)
 
-    let response
-    try {
-      // context if the message is not a reply
-      if (context == null)
-        context = messages[channelID].last
+    // generate response
+    const { response } = (await generate(messages, client.user!.username))
 
-      // make request to model
-      response = (await generate(`${chat}`, context))
-    }
-    catch (error) {
-      if (typingInterval != null)
-        clearInterval(typingInterval)
-
-      typingInterval = null
-      throw error
-    }
-
-    if (typingInterval != null)
+    // stop typing
+    if (typingInterval)
       clearInterval(typingInterval)
-
     typingInterval = null
 
-    let responseText = response.response
-    if (response.length === 0)
-      responseText = '(No response)'
-    console.debug(`${responseText}`)
-
-    // convert channel mentions and pings to proper <@280411966126948353> syntax
-    responseText = formatResponse(responseText, message)
-
-    // reply (will automatically stop typing)
-    const replyMessageIDs = (await replySplitMessage(message, responseText)).map((msg: Message) => msg.id)
-
-    // add response to conversation
-    context = response.context
-    for (let i = 0; i < replyMessageIDs.length; ++i)
-      messages[channelID][replyMessageIDs[i]] = context
-
-    messages[channelID].last = context
-    ++messages[channelID].amount
+    // reply
+    if (response.length !== 0)
+      replySplitMessage(message, formatResponse(response, message))
   }
   catch (error) {
-    if (typing) {
+    if (typingInterval) {
+      clearInterval(typingInterval)
+      typingInterval = null
       try { message.reply({ content: 'Error, please tell <@280411966126948353> to check the console' }) }
       catch {}
     }
