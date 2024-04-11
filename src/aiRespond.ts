@@ -87,7 +87,7 @@ export async function aiRespond(message: Message) {
     if (message.content.match(myMention))
       shouldReply = true
     // - randomly when I am in a server that allows that
-    if (randomMessageGuilds.includes(message.guild!.id) && Math.random() < 0.01)
+    if (!!message.guild && randomMessageGuilds.includes(message.guild!.id) && Math.random() < 0.01)
       shouldReply = true
     if (!shouldReply)
       return
