@@ -1,9 +1,5 @@
 import type { Message } from 'discord.js'
 
-export function getBoolean(str: string) {
-  return !!str && str !== 'false' && str !== 'no' && str !== 'off' && str !== '0'
-}
-
 export function parseJSONMessage(str) {
   return str.split(/[\r\n]+/g).map((line) => {
     const result = JSON.parse(`"${line}"`)
