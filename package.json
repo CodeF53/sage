@@ -5,7 +5,12 @@
     "start": "bun src/bot.ts"
   },
   "dependencies": {
-    "discord.js": "^14.14.1"
+    "@discordjs/voice": "^0.16.1",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "libsodium-wrappers": "^0.7.13",
+    "play-dl": "^1.9.7",
+    "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.12.1",

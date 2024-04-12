@@ -1,20 +1,23 @@
 // https://discordjs.guide/creating-your-bot/command-deployment.html#command-registration
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url' // ! - nodejs compat
 import { REST, Routes } from 'discord.js'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url)) // ! - nodejs compat
 const commands = []
 const commandFolders = fs.readdirSync(__dirname)
 
 for (const folder of commandFolders) {
   if (folder.endsWith('.ts'))
     continue
+  if (folder === 'voice' && /\bbun\b/i.test(process.release.sourceUrl!))
+    continue
   const commandsPath = path.join(__dirname, folder)
   const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'))
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file)
-    // eslint-disable-next-line ts/no-var-requires, ts/no-require-imports
-    const command = require(filePath)
+    const command = await import(filePath)
     if ('data' in command && 'execute' in command)
       commands.push(command.data.toJSON())
     else

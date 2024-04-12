@@ -1,8 +1,11 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url' // ! - nodejs compat
 import { type Client, Collection, Events } from 'discord.js'
 
-export function initCommands(client: Client) {
+const __dirname = path.dirname(fileURLToPath(import.meta.url)) // ! - nodejs compat
+
+export async function initCommands(client: Client) {
   // not even gonna pretend to understand this
   // https://discordjs.guide/creating-your-bot/command-handling.html#loading-command-files
   client.commands = new Collection()
@@ -10,12 +13,13 @@ export function initCommands(client: Client) {
   for (const folder of commandFolders) {
     if (folder.endsWith('.ts'))
       continue
+    if (folder === 'voice' && /\bbun\b/i.test(process.release.sourceUrl!))
+      continue
     const commandsPath = path.join(__dirname, folder)
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'))
     for (const file of commandFiles) {
       const filePath = path.join(commandsPath, file)
-      // eslint-disable-next-line ts/no-var-requires, ts/no-require-imports
-      const command = require(filePath)
+      const command = await import(filePath)
       if ('data' in command && 'execute' in command)
         client.commands.set(command.data.name, command)
       else

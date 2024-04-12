@@ -28,3 +28,10 @@ Setup [This WebUI](https://github.com/lllyasviel/stable-diffusion-webui-forge), 
 If you don't use [AutismMix Lightning](https://civitai.com/models/288584?modelVersionId=379259):
 - change the parameters in `/src/commands/misc/generate/`
 - change the default prompt in `.env`
+
+## Voice Channel Stuff
+[Install FFMPEG](https://ffmpeg.org)
+
+You have to use node and start with `npx tsx src/bot.ts`. Otherwise all commands related to voice will be disabled
+
+This applies until [this github issue](https://github.com/oven-sh/bun/issues/1630) is resolved

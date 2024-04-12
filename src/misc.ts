@@ -9,6 +9,7 @@ export function logError(error: any) {
   }
   console.error(error)
 }
+process.on('uncaughtException', logError)
 
 // split text so it fits in a Discord message
 export function splitText(str: string, length: number) {
