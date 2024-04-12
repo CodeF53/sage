@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction, TextBasedChannel, VoiceBasedChannel }
 import { SlashCommandBuilder } from 'discord.js'
 import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { VoiceConnectionStatus, createAudioPlayer, joinVoiceChannel } from '@discordjs/voice'
+import type { MoreVideoDetails } from 'ytdl-core'
 
 export const data = new SlashCommandBuilder()
   .setName('join')
@@ -47,7 +48,8 @@ function createPlayerQueue(vc: VoiceConnection, channel: TextBasedChannel, reset
     }
     playing = true
     player.play(audio)
-    channel.send({ content: `Now playing ${audio.metadata.title} (${audio.metadata.lengthSeconds} seconds)` })
+    const metadata = audio.metadata as MoreVideoDetails
+    channel.send({ content: `Now playing ${metadata.title} (${metadata.lengthSeconds} seconds)` })
     resetDisconnectTimer(audio.playbackDuration + 500)
     queueTimeout = setTimeout(play, audio.playbackDuration)
   }
