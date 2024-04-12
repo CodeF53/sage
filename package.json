@@ -2,7 +2,8 @@
   "type": "module",
   "main": "src/bot.ts",
   "scripts": {
-    "start": "bun src/bot.ts"
+    "start": "bun src/bot.ts",
+    "start-node": "npx tsx src/bot.ts"
   },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^2.12.1",
     "@types/bun": "^1.0.12",
-    "eslint": "9.0.0-rc.0"
+    "eslint": "9.0.0-rc.0",
+    "tsx": "^4.7.2"
   }
 }
