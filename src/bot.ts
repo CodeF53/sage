@@ -1,9 +1,9 @@
 import 'dotenv/config' // ! - nodejs compat
 import './commands/deployCommands' // register commands with discord
 import { Client, Events, GatewayIntentBits, MessageType, Partials } from 'discord.js'
+import setupCommands from './setupCommands'
 import { aiRespond } from './aiRespond'
 import { logError } from './misc'
-import { initCommands } from './commands/commandHandler'
 import { Player } from './voiceHandler'
 
 export const client = new Client({
@@ -21,7 +21,7 @@ export const client = new Client({
   ],
 })
 
-initCommands(client)
+setupCommands(client)
 
 client.once(Events.ClientReady, async () => {
   await client.guilds.fetch()

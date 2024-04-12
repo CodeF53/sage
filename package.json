@@ -5,17 +5,22 @@
     "start": "bun src/bot.ts",
     "start-node": "npx tsx src/bot.ts"
   },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "libsodium-wrappers": "^0.7.13",
     "play-dl": "^1.9.7",
+    "recursive-readdir": "^2.2.3",
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.12.1",
-    "@types/bun": "^1.0.12",
+    "@types/bun": "latest",
+    "@types/recursive-readdir": "^2.2.4",
     "eslint": "9.0.0-rc.0",
     "tsx": "^4.7.2"
   }

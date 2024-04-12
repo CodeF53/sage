@@ -5,5 +5,6 @@ export default antfu({
     'node/prefer-global/process': 'off',
     'no-console': 'off',
     'no-new': 'off',
+    'antfu/if-newline': 'off'
   },
 })
