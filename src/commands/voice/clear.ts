@@ -4,13 +4,13 @@ import { Player } from '../../voiceHandler'
 import { assertVC } from './join'
 
 export const data = new SlashCommandBuilder()
-  .setName('skip')
-  .setDescription('skip the current song')
+  .setName('clear')
+  .setDescription('clear queue')
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await assertVC(interaction)
   if (!(player instanceof Player))
     return
-  player.skip()
-  interaction.reply({ content: 'skipped' })
+  interaction.reply({ content: `cleared queue of ${player.queue.length} songs` })
+  player.clear()
 }

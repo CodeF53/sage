@@ -3,7 +3,8 @@ import { SlashCommandBuilder } from 'discord.js'
 import { createAudioResource } from '@discordjs/voice'
 import play from 'play-dl'
 import ytdl from 'ytdl-core'
-import { joinVC, voiceChannels } from './join'
+import { Player } from '../../voiceHandler'
+import { assertVC } from './join'
 
 export const data = new SlashCommandBuilder()
   .setName('play')
@@ -11,30 +12,29 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option.setName('url')
       .setDescription('youtube url')
-      .setMaxLength(69)
+      .setMaxLength(80)
       .setRequired(true))
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guildId)
-    return interaction.reply({ content: 'not in a server', ephemeral: true })
-  let channel = voiceChannels[interaction.guildId]
-  if (!channel) {
-    const r = await joinVC(interaction)
-    if (typeof r !== 'boolean')
-      return
-    channel = voiceChannels[interaction.guildId]
-  }
-  const url = interaction.options.getString('url')!
+  const player = await assertVC(interaction)
+  if (!(player instanceof Player))
+    return
 
+  // validate url
+  const url = interaction.options.getString('url')!
   if (!ytdl.validateURL(url))
     return interaction.reply({ content: 'invalid url' })
 
-  const { videoDetails } = await ytdl.getBasicInfo(url)
+  // get audio to stream
   const stream = await play.stream(url)
   const resource = createAudioResource(stream.stream, { inputType: stream.type })
+
+  // add metadata
+  const { videoDetails } = await ytdl.getBasicInfo(url)
   resource.playbackDuration = Number(videoDetails.lengthSeconds) * 1_000
   resource.metadata = videoDetails as any
-  channel.add(resource)
 
+  // queue audio
+  player.add(resource)
   interaction.reply({ content: `queued ${videoDetails.title}` })
 }

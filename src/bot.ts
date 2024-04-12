@@ -4,7 +4,7 @@ import { Client, Events, GatewayIntentBits, MessageType, Partials } from 'discor
 import { aiRespond } from './aiRespond'
 import { logError } from './misc'
 import { initCommands } from './commands/commandHandler'
-import { voiceChannels } from './commands/voice/join'
+import { Player } from './voiceHandler'
 
 export const client = new Client({
   intents: [
@@ -49,11 +49,8 @@ client.login(process.env.TOKEN)
 
 // leave vc before dying
 function leaveAllVCsThenExit() {
-  for (const guildID of Object.keys(voiceChannels)) {
-    const channel = voiceChannels[guildID]
-    channel.vc.destroy()
-    delete voiceChannels[guildID]
-  }
+  for (const player of Object.values(Player.voiceChannels))
+    player.delete()
   setTimeout(() => process.exit(0), 0)
 }
 process.on('exit', leaveAllVCsThenExit)

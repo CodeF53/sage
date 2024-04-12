@@ -1,117 +1,45 @@
-import type { ChatInputCommandInteraction, TextBasedChannel, VoiceBasedChannel } from 'discord.js'
+import type { ChatInputCommandInteraction, InteractionResponse, VoiceBasedChannel } from 'discord.js'
 import { SlashCommandBuilder } from 'discord.js'
-import type { AudioResource, VoiceConnection } from '@discordjs/voice'
-import { VoiceConnectionStatus, createAudioPlayer, joinVoiceChannel } from '@discordjs/voice'
-import type { MoreVideoDetails } from 'ytdl-core'
+import { joinVoiceChannel } from '@discordjs/voice'
+import { Player } from '../../voiceHandler'
 
 export const data = new SlashCommandBuilder()
   .setName('join')
   .setDescription('join your current voice channel')
 
-export function execute(interaction: ChatInputCommandInteraction) {
-  return joinVC(interaction, true)
+export async function execute(interaction: ChatInputCommandInteraction) {
+  const player = await assertVC(interaction)
+  if (player instanceof Player)
+    interaction.reply({ content: 'in!', ephemeral: true })
 }
 
-interface QueueFuncs {
-  add: (audio: AudioResource) => void
-  clear: () => void
-  skip: () => void
-}
-export const voiceChannels: { [key: string]: { vc: VoiceConnection } & QueueFuncs } = {}
-
-function createDisconnectTimer(vc: VoiceConnection, guildId: string) {
-  let timeoutId: Timer | null = null
-  return (extraTime = 0) => {
-    if (timeoutId)
-      clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => {
-      if (!voiceChannels[guildId])
-        return
-      vc.destroy()
-      delete voiceChannels[guildId]
-    }, 5_000 + extraTime)
-  }
-}
-
-function createPlayerQueue(vc: VoiceConnection, channel: TextBasedChannel, resetDisconnectTimer: ReturnType<typeof createDisconnectTimer>): QueueFuncs {
-  const player = createAudioPlayer()
-  vc.subscribe(player)
-  const queue: AudioResource[] = []
-  let playing = false
-  let queueTimeout: Timer | null = null
-
-  function play() {
-    const audio = queue.shift()
-    if (!audio) {
-      playing = false
-      return
-    }
-    playing = true
-    player.play(audio)
-    const metadata = audio.metadata as MoreVideoDetails
-    channel.send({ content: `Now playing ${metadata.title} (${metadata.lengthSeconds} seconds)` })
-    resetDisconnectTimer(audio.playbackDuration + 500)
-    queueTimeout = setTimeout(play, audio.playbackDuration)
-  }
-  function add(audio: AudioResource) {
-    queue.push(audio)
-    if (!playing)
-      play()
-  }
-  function clear() {
-    queue.splice(0, queue.length)
-    player.stop()
-    playing = false
-    if (queueTimeout)
-      clearTimeout(queueTimeout)
-  }
-  function skip() {
-    player.stop()
-    playing = false
-    if (queueTimeout)
-      clearTimeout(queueTimeout)
-    play()
-  }
-  return { add, clear, skip }
-}
-
-export async function joinVC(interaction: ChatInputCommandInteraction, explicit = false) {
-  if (!interaction.member || !interaction.guild)
+export async function assertVC(interaction: ChatInputCommandInteraction): Promise<Player | InteractionResponse> {
+  if (!interaction.guild)
     return interaction.reply({ content: 'not in a server', ephemeral: true })
+  const guild = interaction.guild
 
-  // get vc user is in
-  let channel: VoiceBasedChannel | null
-  if (interaction.inCachedGuild())
-    channel = interaction.member.voice.channel
-  else
-    channel = (await interaction.guild.members.fetch({ user: interaction.user.id })).voice.channel
-  if (!channel)
+  const existingPlayer = Player.getPlayer(guild.id)
+  // get user's channel, give player if user isn't in VC & bot is
+  const voiceChannel: VoiceBasedChannel | null = (await guild.members.fetch({ user: interaction.user.id })).voice.channel
+  if (!voiceChannel) {
+    if (existingPlayer)
+      return existingPlayer
     return interaction.reply({ content: 'you aren\'t in a voice channel', ephemeral: true })
-
-  const channelId = channel.id
-  const guildId = channel.guild.id
-
-  if (voiceChannels[guildId])
-    return interaction.reply({ content: 'already in that vc', ephemeral: true })
+  }
+  // give player if bot is already in vc with user
+  if (existingPlayer?.vcId === voiceChannel.id)
+    return existingPlayer
+  // delete existing player so we can move it to the user's current channel
+  if (existingPlayer)
+    existingPlayer.delete()
 
   // join
-  const vc = await joinVoiceChannel({ channelId, guildId, adapterCreator: channel.guild.voiceAdapterCreator })
+  const vc = joinVoiceChannel({
+    channelId: voiceChannel.id,
+    guildId: guild.id,
+    adapterCreator: guild.voiceAdapterCreator,
+  })
   if (!vc)
     return interaction.reply({ content: 'failed to join', ephemeral: true })
-
-  // only reply if explicitly entered /join
-  if (explicit)
-    interaction.reply({ content: 'in!', ephemeral: true })
-
-  // start auto disconnect timer
-  const resetDisconnectTimer = createDisconnectTimer(vc, guildId)
-  resetDisconnectTimer()
-
-  // create audio queue
-  voiceChannels[guildId] = { vc, ...createPlayerQueue(vc, interaction.channel, resetDisconnectTimer) }
-
-  // clear cache when kicked
-  vc.on(VoiceConnectionStatus.Disconnected, () => delete voiceChannels[guildId])
-
-  return true
+  return new Player(vc, interaction.channel!, guild.id, voiceChannel.id)
 }

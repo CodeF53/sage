@@ -42,9 +42,12 @@
     "jsonc",
     "yaml",
     "toml",
-    "astro",
+    "astro"
   ],
   "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   }
 }
