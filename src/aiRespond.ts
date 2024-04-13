@@ -41,6 +41,30 @@ function formatMessage(message: Message): LLMMessage {
   return { role, content }
 }
 
+// returns up to `count` messages sent up to `timeWindow` minutes before `message`
+// discord doesn't let you pass a time into the `after` message field so this will have to do
+async function getContext(message: Message, count: number, minutes: number): Promise<Message[]> {
+  const contextWindowEnd = message.createdAt.getTime() - (minutes * 60 * 1000)
+  const context = [message]
+  const messageManager = message.channel.messages
+  let lastMessage: Message | undefined = message
+  while (true) {
+    if (context.length >= count)
+      break
+
+    lastMessage = (await messageManager.fetch({ before: lastMessage.id, limit: 1 })).first()
+    // stop searching once no more messages can be found or outside context window
+    if (!lastMessage || lastMessage.createdAt.getTime() < contextWindowEnd)
+      break
+
+    // only add actual messages to the context
+    if ([MessageType.Default, MessageType.Reply].includes(lastMessage.type))
+      context.unshift(lastMessage)
+  }
+
+  return context
+}
+
 // convert channel mentions and pings to proper <@280411966126948353> syntax
 function formatResponse(response: string, message: Message) {
   return response
@@ -97,9 +121,8 @@ export async function aiRespond(message: Message) {
       await message.guild.channels.fetch()
       await message.guild.members.fetch()
     }
-    // develop chat context
-    const messages = [message, ...(await message.channel.messages.fetch({ limit: 4, before: message.id })).values()]
-      .reverse().map(formatMessage)!
+    // develop chat context (up to 15 messages from the last 15 minutes)
+    const messages = (await getContext(message, 15, 15)).map(formatMessage)
     messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
 
     // start typing

@@ -25,8 +25,9 @@ export async function generate(messages: LLMMessage[], username: string) {
     }),
     headers: { 'Content-Type': 'application/json' },
   })
-  const data = await resp.json()
+  const data = (await resp.json()) as any
   if ((data.response as string).includes('{{ end }}'))
     return generate(messages, username)
+  console.log(`${messages.map(m => m.content).join('\n\n')}\n\n@${username}:${data.response}`)
   return data
 }
