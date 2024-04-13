@@ -121,9 +121,6 @@ export async function aiRespond(message: Message) {
       await message.guild.channels.fetch()
       await message.guild.members.fetch()
     }
-    // develop chat context (up to 15 messages from the last 15 minutes)
-    const messages = (await getContext(message, 15, 15)).map(formatMessage)
-    messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
 
     // start typing
     message.channel.sendTyping()
@@ -135,6 +132,10 @@ export async function aiRespond(message: Message) {
         typingInterval = null
       }
     }, 7000)
+    
+    // develop chat context (up to 15 messages from the last 15 minutes)
+    const messages = (await getContext(message, 15, 15)).map(formatMessage)
+    messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
 
     // generate response
     const { response } = (await generate(messages, client.user!.username))
