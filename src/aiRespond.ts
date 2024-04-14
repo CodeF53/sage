@@ -1,5 +1,5 @@
-import type { Message } from 'discord.js'
-import { ChannelType, MessageType } from 'discord.js'
+import type { ChannelType, Message } from 'discord.js'
+import { MessageType } from 'discord.js'
 import { client } from './bot'
 import { logError, replySplitMessage } from './misc'
 import type { LLMMessage } from './ollama'
@@ -60,6 +60,9 @@ async function getContext(message: Message, count: number, minutes: number): Pro
     // only add actual messages to the context
     if ([MessageType.Default, MessageType.Reply].includes(lastMessage.type))
       context.unshift(lastMessage)
+    // stop reading when lobotomized
+    else if (MessageType.ChatInputCommand === lastMessage.type && lastMessage.content === ':brain: :hammer: - done!')
+      break
   }
 
   return context
@@ -132,7 +135,7 @@ export async function aiRespond(message: Message) {
         typingInterval = null
       }
     }, 7000)
-    
+
     // develop chat context (up to 15 messages from the last 15 minutes)
     const messages = (await getContext(message, 15, 15)).map(formatMessage)
     messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
