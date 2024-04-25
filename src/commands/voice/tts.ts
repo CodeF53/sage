@@ -20,9 +20,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction, true)
   if (!(player instanceof Player)) return
 
-  // validate url
+  // validate yap
   const text = interaction.options.getString('text')!
+  // queue yap
+  await ttsQueue(player, text)
 
+  return interaction.reply({ content: `yapping ${text}` })
+}
+
+export async function ttsQueue(player: Player, text: string) {
   // ensure bot won't leave while generating tts
   player.clearDisconnectTimeout()
 
@@ -36,6 +42,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   player.ttsQueue.push(resource)
   if (player.ttsPlayer.state.status === AudioPlayerStatus.Idle)
     player.ttsPlay()
-
-  return interaction.reply({ content: `yapping ${text}` })
 }

@@ -4,6 +4,8 @@ import { client } from './bot'
 import { logError, replySplitMessage } from './misc'
 import type { LLMMessage } from './ollama'
 import { generate } from './ollama'
+import { Player } from './voiceHandler'
+import { ttsQueue } from './commands/voice/tts'
 
 const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
 
@@ -151,6 +153,14 @@ export async function aiRespond(message: Message) {
     // reply
     if (response.length !== 0)
       replySplitMessage(message, formatResponse(response, message))
+
+    // auto tts if in vc with user
+    const guild = message.guild!
+    const userVC = (await guild.members.fetch({ user: message.author.id })).voice.channel
+    if (!userVC) return
+    const existingPlayer = Player.getPlayer(guild.id)
+    if (!existingPlayer || userVC.id !== existingPlayer.vcId) return
+    ttsQueue(existingPlayer, response)
   }
   catch (error) {
     if (typingInterval) {
