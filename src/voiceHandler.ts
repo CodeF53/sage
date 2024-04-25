@@ -34,23 +34,10 @@ export class Player {
     this.channel.send({ content: `Now playing ${metadata.title} (${metadata.lengthSeconds} seconds)` })
   }
 
-  add(audio: AudioResource) {
-    this.queue.push(audio)
-    if (this.player.state.status === AudioPlayerStatus.Idle)
-      this.play()
-  }
-
-  clear() {
-    this.queue.splice(0, this.queue.length)
-    this.player.stop()
-  }
-
-  skip() {
-    this.player.stop()
-  }
+  status() { return this.player.state.status }
 
   private disconnectTimeout: Timer = this.createDisconnectTimeout()
-  private createDisconnectTimeout() {
+  createDisconnectTimeout() {
     this.disconnectTimeout = setTimeout(() => {
       this.channel.send({ content: 'inactive for 5 minutes, leaving vc' })
       this.delete()

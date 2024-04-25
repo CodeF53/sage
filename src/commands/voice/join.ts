@@ -8,24 +8,33 @@ export const data = new SlashCommandBuilder()
   .setDescription('join your current voice channel')
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const player = await assertVC(interaction)
-  if (player instanceof Player)
-    interaction.reply({ content: 'in!', ephemeral: true })
+  const player = await getVC(interaction, true)
+  if (!(player instanceof Player)) return
+
+  interaction.reply({ content: 'in!', ephemeral: true })
 }
 
-export async function assertVC(interaction: ChatInputCommandInteraction): Promise<Player | InteractionResponse> {
+// given interaction gets a Player or replies about issues regarding getting one
+// setting assert to true will make it attempt to join VC if not in one
+export async function getVC(interaction: ChatInputCommandInteraction, assert = false): Promise<Player | InteractionResponse> {
   if (!interaction.guild)
     return interaction.reply({ content: 'not in a server', ephemeral: true })
-  const guild = interaction.guild
 
+  const guild = interaction.guild
   const existingPlayer = Player.getPlayer(guild.id)
-  // get user's channel, give player if user isn't in VC & bot is
+
+  if (!assert) {
+    if (existingPlayer) return existingPlayer
+    return interaction.reply({ content: 'not in a VC', ephemeral: true })
+  }
+
+  // get user's channel
   const voiceChannel: VoiceBasedChannel | null = (await guild.members.fetch({ user: interaction.user.id })).voice.channel
-  if (!voiceChannel) {
-    if (existingPlayer)
-      return existingPlayer
+  if (!voiceChannel) { // handle user not being in a VC
+    if (existingPlayer) return existingPlayer
     return interaction.reply({ content: 'you aren\'t in a voice channel', ephemeral: true })
   }
+
   // give player if bot is already in vc with user
   if (existingPlayer?.vcId === voiceChannel.id)
     return existingPlayer

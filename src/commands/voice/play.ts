@@ -1,10 +1,10 @@
 import type { ChatInputCommandInteraction } from 'discord.js'
 import { SlashCommandBuilder } from 'discord.js'
-import { createAudioResource } from '@discordjs/voice'
+import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice'
 import play from 'play-dl'
 import ytdl from 'ytdl-core'
 import { Player } from '../../voiceHandler'
-import { assertVC } from './join'
+import { getVC } from './join'
 
 export const data = new SlashCommandBuilder()
   .setName('play')
@@ -16,9 +16,8 @@ export const data = new SlashCommandBuilder()
       .setRequired(true))
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const player = await assertVC(interaction)
-  if (!(player instanceof Player))
-    return
+  const player = await getVC(interaction, true)
+  if (!(player instanceof Player)) return
 
   // validate url
   const url = interaction.options.getString('url')!
@@ -38,6 +37,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   resource.metadata = videoDetails as any
 
   // queue audio
-  player.add(resource)
+  player.queue.push(resource)
+  if (player.status() === AudioPlayerStatus.Idle)
+    player.play()
+
   interaction.reply({ content: `queued ${videoDetails.title}` })
 }
