@@ -15,8 +15,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (player.status() === AudioPlayerStatus.Idle)
     return interaction.reply({ content: 'no items in queue' })
 
-  player.queue = []
-  player.player.stop()
+  player.activePlayer().stop()
+  if (player.ttsPlayer.state.status !== AudioPlayerStatus.Idle) {
+    player.ttsQueue = []
+    return interaction.reply({ content: 'cleared tts queue' })
+  }
 
-  interaction.reply({ content: 'cleared queue' })
+  player.queue = []
+  return interaction.reply({ content: 'cleared music queue' })
 }

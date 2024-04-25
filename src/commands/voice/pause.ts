@@ -16,6 +16,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return interaction.reply({ content: 'not playing audio' })
 
   player.createDisconnectTimeout()
-  player.player.pause()
+  player.activePlayer().pause()
   interaction.reply({ content: 'paused' })
 }

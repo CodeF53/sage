@@ -16,6 +16,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return interaction.reply({ content: 'not paused' })
 
   player.clearDisconnectTimeout()
-  player.player.unpause()
+  player.activePlayer().unpause()
   interaction.reply({ content: 'unpaused' })
 }

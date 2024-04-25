@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
+    "@rafapaezbas/mp3-duration": "^1.2.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
+    "edge-tts": "^1.0.1",
     "libsodium-wrappers": "^0.7.13",
     "play-dl": "^1.9.7",
     "recursive-readdir": "^2.2.3",
