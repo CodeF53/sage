@@ -11,6 +11,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await assertVC(interaction)
   if (!(player instanceof Player))
     return
-  interaction.reply({ content: `cleared queue of ${player.queue.length} songs` })
+  interaction.reply({ content: 'cleared queue' })
   player.clear()
 }

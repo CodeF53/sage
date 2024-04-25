@@ -12,7 +12,7 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option.setName('url')
       .setDescription('youtube url')
-      .setMaxLength(80)
+      .setMaxLength(255)
       .setRequired(true))
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -24,6 +24,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const url = interaction.options.getString('url')!
   if (!ytdl.validateURL(url))
     return interaction.reply({ content: 'invalid url' })
+
+  // ensure bot won't leave while getting audio
+  player.clearDisconnectTimeout()
 
   // get audio to stream
   const stream = await play.stream(url)
