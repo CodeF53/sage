@@ -3,7 +3,7 @@ import type { ChatInputCommandInteraction } from 'discord.js'
 import { SlashCommandBuilder } from 'discord.js'
 import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice'
 import { tts } from 'edge-tts'
-import mp3Duration from 'mp3-duration'
+import mp3Duration from '@rafapaezbas/mp3-duration'
 import { Player } from '../../voiceHandler'
 import { getVC } from './join'
 
