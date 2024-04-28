@@ -3,7 +3,7 @@ import type { ChatInputCommandInteraction } from 'discord.js'
 import { SlashCommandBuilder } from 'discord.js'
 import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice'
 import { tts } from 'edge-tts'
-import mp3Duration from '@rafapaezbas/mp3-duration'
+import decodeAudio from 'audio-decode'
 import { Player } from '../../voiceHandler'
 import { getVC } from './join'
 
@@ -34,12 +34,15 @@ export async function ttsQueue(player: Player, text: string) {
 
   // get audio to yap
   const audio = await tts(text)
+  const { duration } = await decodeAudio(audio)
   const resource = createAudioResource(Readable.from(audio))
-  resource.playbackDuration = (await mp3Duration(audio)) * 1_000
+  resource.playbackDuration = duration * 1_000
 
   // queue audio
   player.player.pause()
   player.ttsQueue.push(resource)
   if (player.ttsPlayer.state.status === AudioPlayerStatus.Idle)
     player.ttsPlay()
+
+  return new Promise(r => setTimeout(r, duration * 1_000))
 }

@@ -2,8 +2,10 @@ import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@discordjs/voice'
 import type { TextBasedChannel } from 'discord.js'
 import type { MoreVideoDetails } from 'ytdl-core'
+import { ttsQueue } from './commands/voice/tts'
 
 const IDLE_TIMEOUT = 300_000
+const LEAVE_MESSAGES = ['y\'all boring as fuck, I\'m out', 'I am gonna go crank my hog', 'brb gotta go beat my wife', 'I gotta shid']
 export class Player {
   static voiceChannels: Record<string, Player> = {}
   static getPlayer(guildId: string): Player | undefined {
@@ -64,8 +66,11 @@ export class Player {
   private disconnectTimeout: Timer = this.createDisconnectTimeout()
   createDisconnectTimeout() {
     this.clearDisconnectTimeout()
-    this.disconnectTimeout = setTimeout(() => {
-      this.channel.send({ content: 'inactive for 5 minutes, leaving vc' })
+    this.disconnectTimeout = setTimeout(async () => {
+      const leaveMessage = LEAVE_MESSAGES[Math.floor(Math.random() * LEAVE_MESSAGES.length)]
+      await ttsQueue(this, leaveMessage)
+
+      this.channel.send({ content: leaveMessage })
       this.delete()
     }, IDLE_TIMEOUT)
     return this.disconnectTimeout

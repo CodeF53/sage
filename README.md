@@ -32,6 +32,6 @@ If you don't use [AutismMix Lightning](https://civitai.com/models/288584?modelVe
 ## Voice Channel Stuff
 [Install FFMPEG](https://ffmpeg.org)
 
-You have to use node and start with `npx tsx src/bot.ts`. Otherwise all commands related to voice will be disabled
+You have to use node and start with `start-node`. Otherwise all commands related to voice will be disabled
 
-This applies until [this github issue](https://github.com/oven-sh/bun/issues/1630) is resolved
+This applies until [this github issue](https://github.com/oven-sh/bun/issues/26) and [this one](https://github.com/oven-sh/bun/issues/10381) is resolved
