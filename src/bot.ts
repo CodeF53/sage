@@ -5,6 +5,8 @@ import { aiRespond } from './aiRespond'
 import { logError } from './misc'
 import { Player } from './voiceHandler'
 
+export const DUMB_GUILDS = process.env.DUMB_GUILDS!.split(',')
+
 export const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -31,6 +33,10 @@ client.on(Events.MessageCreate, async (message) => {
   // ephemeral messages sometimes trigger this and we don't really care
   try { await message.fetch() }
   catch { }
+
+  // prevent talking in dumb guilds
+  if (message.guild && DUMB_GUILDS.includes(message.guild.id))
+    return
 
   try {
     // ignore dumb messages
