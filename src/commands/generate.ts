@@ -1,6 +1,7 @@
+import { Buffer } from 'node:buffer'
 import type { ChatInputCommandInteraction } from 'discord.js'
 import { SlashCommandBuilder } from 'discord.js'
-import { DUMB_GUILDS } from '../bot'
+import { DUMB_GUILDS } from '../start'
 
 const sdURL = process.env.SD_URL!
 const defaultPrompt = process.env.SD_PROMPT!
@@ -41,7 +42,7 @@ export const data = new SlashCommandBuilder()
 function formatImages(images: string[]) {
   const out = []
   for (const image of images)
-    out.push({ attachment: new Buffer.from(image, 'base64') })
+    out.push({ attachment: Buffer.from(image, 'base64') })
   return out
 }
 
@@ -75,7 +76,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       save_images: false,
     }),
   })
-  const data = await resp.json()
+  const data: any = await resp.json()
   const { images } = data
   const info = JSON.parse(data.info)
 

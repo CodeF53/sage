@@ -1,4 +1,4 @@
 package-lock.json
 bun.lockb
 node_modules/
-.env
+*.private.env

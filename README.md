@@ -1,37 +1,34 @@
 ## Set-up instructions
 1. Install [Bun](https://bun.sh) and install dependencies with `bun i`
-2. Install [Ollama](https://github.com/jmorganca/ollama) (ditto)
-3. Pull (download) a based model, e.g `ollama pull dolphin-mistral` or `ollama pull dolphin-phi`
-4. Start Ollama by running `ollama serve`
-5. [Create a Discord bot](https://discord.com/developers/applications)
-    - Under Application » Bot
-        - Enable Message Content Intent
-        - Enable Server Members Intent (for replacing user mentions with the username)
-6. Invite the bot to a server
-    1. Go to Application » OAuth2 » URL Generator
-    2. Enable `bot`
-    3. Enable Send Messages, Read Messages/View Channels, and Read Message History
-    4. Under Generated URL, click Copy and paste the URL in your browser
-7. Rename `.env.example` to `.env` and edit the `.env` file
-    - You can get the token from Application > Bot > Token
-    - Get APP_ID from Application > General Information > Application ID
-    - Make sure to change the model if you aren't using `dolphin-mistral`
-    - Ollama URL can be kept the same unless you have changed the port
-    - You can use multiple Ollama servers at the same time by separating the URLs with commas
-    - You can edit the system message the bot uses
-8. Start the bot with `bun start`
-9. You can interact with the bot by @mentioning it with your message
+2. [Create a Discord bot](https://discord.com/developers/applications)
+    - enable `Message Content Intent` and `Server Members Intent` in `Application` > `Bot`
+3. Create `/configs/botName.private.env`
+    ```sh
+    TOKEN=...
+    APP_ID=...
+    ```
+4. Invite the bot to a server with:
+  - `https://discord.com/oauth2/authorize?permissions=68608&scope=bot&client_id=`+`YOUR APP_ID`
+5. **TEMPORARY** install NodeJS and run `bun start-node`
+    - Applies until bun gets [brotli compression](https://github.com/oven-sh/bun/issues/267) and [some `dgram` APIs](https://github.com/oven-sh/bun/issues/10381)
+6. start with `bun start`
 
-## /generate setup
-Setup [This WebUI](https://github.com/lllyasviel/stable-diffusion-webui-forge), add `--api --nowebui` to `COMMANDLINE_ARGS`. Then run it in the background.
+All configs can be found in either:
+- `.env` (Global Config)
+- `./configs/*.env` (Per-Bot config)
+- `./configs/*.private.env` (Bot Credential config)
 
-If you don't use [AutismMix Lightning](https://civitai.com/models/288584?modelVersionId=379259):
-- change the parameters in `/src/commands/misc/generate/`
-- change the default prompt in `.env`
+You can run more than one bot at once by creating more in `./configs/`
+
+## LLM setup
+1. Install [Ollama](https://github.com/jmorganca/ollama)
+2. Download an model ex: `ollama pull dolphin-mistral`
+3. Start Ollama by running `ollama serve`
+
+## Image Generation setup
+1. setup [This WebUI](https://github.com/lllyasviel/stable-diffusion-webui-forge)
+2. add `--api --nowebui` to `COMMANDLINE_ARGS` in `webui-user.sh`
+3. run it in the background whenever you run the bot
 
 ## Voice Channel Stuff
-[Install FFMPEG](https://ffmpeg.org)
-
-You have to use node and start with `start-node`. Otherwise all commands related to voice will be disabled
-
-This applies until [this github issue](https://github.com/oven-sh/bun/issues/26) and [this one](https://github.com/oven-sh/bun/issues/10381) is resolved
+1. [Install FFMPEG](https://ffmpeg.org)

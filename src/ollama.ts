@@ -1,24 +1,22 @@
-const ollamaURL = process.env.OLLAMA_URL!
-const system = process.env.SYSTEM!
-const model = process.env.OLLAMA_MODEL!
+const { LLM_URL, LLM_MODEL, LLM_START_TAG, LLM_END_TAG, LLM_SYSTEM } = process.env as Record<string, string>
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
 
-const sys = `<|im_start|>system \n${system}<|im_end|>`
+const sys = `${LLM_START_TAG}system \n${LLM_SYSTEM}${LLM_END_TAG}`
 
 export async function generate(messages: LLMMessage[], username: string) {
-  const context = messages.map(({ role, content }) => `<|im_start|>${role} \n${content}<|im_end|>`).join('\n{{ end }}')
-  const ass = `<|im_start|>assistant \n@${username}:`
+  const context = messages.map(({ role, content }) => `${LLM_START_TAG}${role} \n${content}${LLM_END_TAG}`).join('\n{{ end }}')
+  const ass = `${LLM_START_TAG}assistant \n@${username}:`
 
   const prompt = [sys, context, ass].join('\n{{ end }}')
 
-  const resp = await fetch(`${ollamaURL}/api/generate`, {
+  const resp = await fetch(`${LLM_URL}/api/generate`, {
     method: 'post',
     body: JSON.stringify({
-      model,
+      model: LLM_MODEL,
       raw: true,
       prompt,
       stream: false,

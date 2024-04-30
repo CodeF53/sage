@@ -1,18 +1,33 @@
-import type { Message } from 'discord.js'
+import { type Message, MessageType } from 'discord.js'
 
-export function logError(error: any) {
-  if (error.response) {
-    let str = `Error ${error.response.status} ${error.response.statusText}: ${error.request.method} ${error.request.path}`
-    if (error.response.data?.error)
-      str += `: ${error.response.data.error}`
-    error = str
+// returns up to `count` messages sent up to `timeWindow` minutes before `message`
+export async function getMessageContext(message: Message, count: number, minutes: number): Promise<Message[]> {
+  const contextWindowEnd = message.createdAt.getTime() - (minutes * 60 * 1000)
+  const context = [message]
+  const messageManager = message.channel.messages
+  let lastMessage: Message | undefined = message
+  while (true) {
+    if (context.length >= count)
+      break
+
+    lastMessage = (await messageManager.fetch({ before: lastMessage.id, limit: 1 })).first()
+    // stop searching once no more messages can be found or outside context window
+    if (!lastMessage || lastMessage.createdAt.getTime() < contextWindowEnd)
+      break
+
+    // only add actual messages to the context
+    if ([MessageType.Default, MessageType.Reply].includes(lastMessage.type))
+      context.unshift(lastMessage)
+    // stop reading when lobotomized
+    else if (MessageType.ChatInputCommand === lastMessage.type && lastMessage.content === ':brain: :hammer: - done!')
+      break
   }
-  console.error(error)
+
+  return context
 }
-process.on('uncaughtException', logError)
 
 // split text so it fits in a Discord message
-export function splitText(str: string, length: number) {
+function splitText(str: string, length: number) {
   // trim matches different characters to \s
   str = str
     .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -65,15 +80,12 @@ export function splitText(str: string, length: number) {
 }
 
 // reply to message and split it if its too long
-export async function replySplitMessage(replyMessage: Message, content) {
+export async function replySplitMessage(replyMessage: Message, content: string) {
   const responseMessages = splitText(content, 2000).map(content => ({ content }))
 
   const replyMessages: Message[] = []
-  for (let i = 0; i < responseMessages.length; ++i) {
-    if (i === 0)
-      replyMessages.push(await replyMessage.reply(responseMessages[i]))
-		 else
-      replyMessages.push(await replyMessage.channel.send(responseMessages[i]))
-  }
+  replyMessages.push(await replyMessage.reply(responseMessages[0]))
+  for (let i = 1; i < responseMessages.length; ++i)
+    replyMessages.push(await replyMessage.channel.send(responseMessages[i]))
   return replyMessages
 }

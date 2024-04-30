@@ -87,3 +87,8 @@ export class Player {
       delete Player.voiceChannels[this.guildId]
   }
 }
+
+export function exitAllVCs() {
+  for (const player of Object.values(Player.voiceChannels))
+    player.delete()
+}

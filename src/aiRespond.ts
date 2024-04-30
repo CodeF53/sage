@@ -1,13 +1,32 @@
-import type { ChannelType, Message } from 'discord.js'
+import { ChannelType, type Message } from 'discord.js'
 import { MessageType } from 'discord.js'
-import { client } from './bot'
-import { logError, replySplitMessage } from './misc'
+import { DUMB_GUILDS, client } from './start'
 import type { LLMMessage } from './ollama'
 import { generate } from './ollama'
 import { Player } from './voiceHandler'
 import { ttsQueue } from './commands/voice/tts'
+import { getMessageContext, replySplitMessage } from './util'
 
+// ! Temp until /config (enable/disable) [feature]
 const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
+
+export async function handleMessage(message: Message) {
+  // ephemeral messages sometimes trigger this and we don't really care
+  try { await message.fetch() }
+  catch { return }
+
+  // prevent talking in dumb guilds
+  if (message.guild && DUMB_GUILDS.includes(message.guild.id))
+    return
+
+  // ignore dumb messages
+  if (!message.author.id || message.author.id === client!.user!.id
+    || typeof message.content !== 'string' || message.content.length === 0
+    || ![MessageType.Reply, MessageType.Default].includes(message.type))
+    return
+
+  return aiRespond(message)
+}
 
 function formatMessage(message: Message): LLMMessage {
   const text = message.content
@@ -41,33 +60,6 @@ function formatMessage(message: Message): LLMMessage {
     role = 'assistant'
 
   return { role, content }
-}
-
-// returns up to `count` messages sent up to `timeWindow` minutes before `message`
-// discord doesn't let you pass a time into the `after` message field so this will have to do
-async function getContext(message: Message, count: number, minutes: number): Promise<Message[]> {
-  const contextWindowEnd = message.createdAt.getTime() - (minutes * 60 * 1000)
-  const context = [message]
-  const messageManager = message.channel.messages
-  let lastMessage: Message | undefined = message
-  while (true) {
-    if (context.length >= count)
-      break
-
-    lastMessage = (await messageManager.fetch({ before: lastMessage.id, limit: 1 })).first()
-    // stop searching once no more messages can be found or outside context window
-    if (!lastMessage || lastMessage.createdAt.getTime() < contextWindowEnd)
-      break
-
-    // only add actual messages to the context
-    if ([MessageType.Default, MessageType.Reply].includes(lastMessage.type))
-      context.unshift(lastMessage)
-    // stop reading when lobotomized
-    else if (MessageType.ChatInputCommand === lastMessage.type && lastMessage.content === ':brain: :hammer: - done!')
-      break
-  }
-
-  return context
 }
 
 // convert channel mentions and pings to proper <@280411966126948353> syntax
@@ -139,7 +131,7 @@ export async function aiRespond(message: Message) {
     }, 7000)
 
     // develop chat context (up to 15 messages from the last 15 minutes)
-    const messages = (await getContext(message, 15, 15)).map(formatMessage)
+    const messages = (await getMessageContext(message, 15, 15)).map(formatMessage)
     messages.unshift({ role: 'system', content: `discord chat in ${message.guild ? `#${message.channel.name}` : 'DMs'}` })
 
     // generate response
@@ -163,12 +155,10 @@ export async function aiRespond(message: Message) {
     ttsQueue(existingPlayer, response)
   }
   catch (error) {
-    if (typingInterval) {
-      clearInterval(typingInterval)
-      typingInterval = null
-      try { message.reply({ content: 'Error, please tell <@280411966126948353> to check the console' }) }
-      catch {}
-    }
-    logError(error)
+    if (typingInterval)
+      message.reply({ content: 'Error, please tell <@280411966126948353> to check the console' })
+    console.error(error)
+  } finally {
+    if (typingInterval) clearInterval(typingInterval)
   }
 }
