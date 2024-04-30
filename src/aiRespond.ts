@@ -145,7 +145,8 @@ export async function aiRespond(message: Message) {
       replySplitMessage(message, formatResponse(response, message))
 
     // auto tts if in vc with user
-    const guild = message.guild!
+    const guild = message.guild
+    if (!guild) return
     const userVC = (await guild.members.fetch({ user: message.author.id })).voice.channel
     if (!userVC) return
     const existingPlayer = Player.getPlayer(guild.id)
