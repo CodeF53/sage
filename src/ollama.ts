@@ -8,10 +8,10 @@ export interface LLMMessage {
 const sys = `${LLM_START_TAG}system \n${LLM_SYSTEM}${LLM_END_TAG}`
 
 export async function generate(messages: LLMMessage[], username: string) {
-  const context = messages.map(({ role, content }) => `${LLM_START_TAG}${role} \n${content}${LLM_END_TAG}`).join('\n{{ end }}')
+  const context = messages.map(({ role, content }) => `${LLM_START_TAG}${role} \n${content}${LLM_END_TAG}`)
   const ass = `${LLM_START_TAG}assistant \n@${username}:`
 
-  const prompt = [sys, context, ass].join('\n{{ end }}')
+  const prompt = [sys, ...context, ass].join('\n\n{{ end }}')
 
   const resp = await fetch(`${LLM_URL}/api/generate`, {
     method: 'post',
@@ -20,12 +20,15 @@ export async function generate(messages: LLMMessage[], username: string) {
       raw: true,
       prompt,
       stream: false,
+      options: {
+        stop: [LLM_START_TAG, LLM_END_TAG, '{{ end }}', '\n\n@'],
+      },
     }),
     headers: { 'Content-Type': 'application/json' },
   })
   const data = (await resp.json()) as any
-  if ((data.response as string).includes('{{ end }}'))
-    return generate(messages, username)
+  if (data.error) throw new Error(data.error)
+
   console.log(`${messages.map(m => m.content).join('\n\n')}\n\n@${username}:${data.response}`)
   return data
 }
