@@ -1,9 +1,8 @@
 {
   "type": "module",
-  "main": "src/bot.ts",
+  "main": "index.ts",
   "scripts": {
-    "start": "bun src/bot.ts",
-    "start-node": "npx tsx src/bot.ts"
+    "start": "bun index.ts"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
