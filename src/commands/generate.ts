@@ -52,14 +52,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return interaction.reply({ content: `image generation is disabled in this server, try ${isAdmin ? '`/config set generate true`' : 'contacting an admin'}`, ephemeral: true })
   }
 
-  const prompt = interaction.options.getString('prompt')!
+  const prompt = interaction.options.getString('prompt', true)!
   let negative_prompt = interaction.options.getString('negative_prompt') ?? ''
 
   // prevent generating nsfw unless explicitly requested
   if (!/\bnsfw\b/i.test(prompt))
     negative_prompt = `nsfw, nude, fully nude, partial nudity, explicit, ${negative_prompt}`
 
-  const replyPromise = interaction.reply({ content: 'generating...' })
+  const replyPromise = interaction.deferReply()
 
   const resp = await fetch(`${sdURL}/sdapi/v1/txt2img`, {
     method: 'POST',

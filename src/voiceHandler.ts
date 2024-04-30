@@ -53,6 +53,8 @@ export class Player {
     this.player.pause()
     this.vc.subscribe(this.ttsPlayer)
     this.ttsPlayer.play(audio)
+    if ((audio.metadata as any).sendInChat)
+      this.channel.send({ content: `yappin: ${(audio.metadata as any).text}` })
   }
 
   activePlayer() {

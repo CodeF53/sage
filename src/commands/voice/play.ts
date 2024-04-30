@@ -20,10 +20,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction, true)
   if (!(player instanceof Player)) return
 
+  const reply = interaction.deferReply({ ephemeral: true })
   // validate url
   const url = interaction.options.getString('url')!
   if (!ytdl.validateURL(url))
-    return interaction.reply({ content: 'invalid url' })
+    return (await reply).edit({ content: 'invalid url' })
 
   // ensure bot won't leave while getting audio
   player.clearDisconnectTimeout()
@@ -42,5 +43,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (player.status() === AudioPlayerStatus.Idle)
     player.play()
 
-  interaction.reply({ content: `queued ${videoDetails.title}` })
+  const _ = (await reply).edit({ content: `queued ${videoDetails.title}` })
 }

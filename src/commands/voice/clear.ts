@@ -14,14 +14,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!(player instanceof Player)) return
 
   if (player.status() === AudioPlayerStatus.Idle)
-    return interaction.reply({ content: 'no items in queue' })
+    return interaction.reply({ content: 'no items in queue', ephemeral: true })
 
   player.activePlayer().stop()
   if (player.ttsPlayer.state.status !== AudioPlayerStatus.Idle) {
     player.ttsQueue = []
-    return interaction.reply({ content: 'cleared tts queue' })
+    return interaction.reply({ content: 'cleared tts queue', ephemeral: true })
   }
 
   player.queue = []
-  return interaction.reply({ content: 'cleared music queue' })
+  return interaction.reply({ content: 'cleared music queue', ephemeral: true })
 }

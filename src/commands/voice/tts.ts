@@ -24,12 +24,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // validate yap
   const text = interaction.options.getString('text')!
   // queue yap
-  await ttsQueue(player, text)
+  ttsQueue(player, text, true)
 
-  return interaction.reply({ content: `yapping ${text}` })
+  return interaction.reply({ content: 'queued', ephemeral: true })
 }
 
-export async function ttsQueue(player: Player, text: string) {
+export async function ttsQueue(player: Player, text: string, sendInChat = false) {
   // ensure bot won't leave while generating tts
   player.clearDisconnectTimeout()
 
@@ -38,6 +38,7 @@ export async function ttsQueue(player: Player, text: string) {
   const { duration } = await decodeAudio(audio)
   const resource = createAudioResource(Readable.from(audio))
   resource.playbackDuration = duration * 1_000
+  resource.metadata = { text, sendInChat } as any
 
   // queue audio
   player.player.pause()
