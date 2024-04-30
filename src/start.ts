@@ -4,11 +4,10 @@ import setupCommands from './setupCommands'
 import { getClient } from './setupClient'
 import { exitAllVCs } from './voiceHandler'
 import { handleMessage } from './aiRespond'
-
-// ! Temp until /config (enable/disable) [feature]
-export const DUMB_GUILDS = process.env.DUMB_GUILDS!.split(',')
+import { initDB } from './dynamicConfig.ts'
 
 export const client = await getClient()
+initDB(client)
 client.on(Events.MessageCreate, handleMessage)
 setupCommands(client)
 

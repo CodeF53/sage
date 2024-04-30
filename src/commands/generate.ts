@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import type { ChatInputCommandInteraction } from 'discord.js'
-import { SlashCommandBuilder } from 'discord.js'
-import { DUMB_GUILDS } from '../start'
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
+import { guildDB } from '../dynamicConfig'
 
 const sdURL = process.env.SD_URL!
 const defaultPrompt = process.env.SD_PROMPT!
@@ -47,8 +47,10 @@ function formatImages(images: string[]) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  if (interaction.guild && DUMB_GUILDS.includes(interaction.guild.id))
-    return interaction.reply('I can\'t do that here, try somewhere less public')
+  if (interaction.guild && !guildDB.getKey(interaction.guild.id).generate) {
+    const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+    return interaction.reply({ content: `image generation is disabled in this server, try ${isAdmin ? '`/config set generate true`' : 'contacting an admin'}`, ephemeral: true })
+  }
 
   const prompt = interaction.options.getString('prompt')!
   let negative_prompt = interaction.options.getString('negative_prompt') ?? ''

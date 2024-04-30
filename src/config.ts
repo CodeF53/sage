@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 
 const botName = process.argv.at(-1)
 
+process.env.BOT_NAME = process.argv.at(-1)
 dotenv.config({ path: '.env' })
 dotenv.config({ path: `./configs/${botName}.env` })
 dotenv.config({ path: `./configs/${botName}.private.env` })

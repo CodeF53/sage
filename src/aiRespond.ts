@@ -1,22 +1,20 @@
 import { ChannelType, type Message } from 'discord.js'
 import { MessageType } from 'discord.js'
-import { DUMB_GUILDS, client } from './start'
+import { client } from './start'
 import type { LLMMessage } from './ollama'
 import { generate } from './ollama'
 import { Player } from './voiceHandler'
 import { ttsQueue } from './commands/voice/tts'
 import { getMessageContext, replySplitMessage } from './util'
-
-// ! Temp until /config (enable/disable) [feature]
-const randomMessageGuilds = process.env.RANDOM_MESSAGE_GUILDS!.split(',')
+import { guildDB } from './dynamicConfig'
 
 export async function handleMessage(message: Message) {
   // ephemeral messages sometimes trigger this and we don't really care
   try { await message.fetch() }
   catch { return }
 
-  // prevent talking in dumb guilds
-  if (message.guild && DUMB_GUILDS.includes(message.guild.id))
+  // prevent talking where disabled
+  if (message.guild && !guildDB.getKey(message.guild.id).llm)
     return
 
   // ignore dumb messages
@@ -108,7 +106,7 @@ export async function aiRespond(message: Message) {
     if (message.content.match(myMention))
       shouldReply = true
     // - randomly when I am in a server that allows that
-    if (!!message.guild && randomMessageGuilds.includes(message.guild!.id) && Math.random() < 0.01)
+    if (message.guild && guildDB.getKey(message.guild.id).randomMessages && Math.random() < 0.01)
       shouldReply = true
     if (!shouldReply)
       return
@@ -158,7 +156,8 @@ export async function aiRespond(message: Message) {
     if (typingInterval)
       message.reply({ content: 'Error, please tell <@280411966126948353> to check the console' })
     console.error(error)
-  } finally {
+  }
+  finally {
     if (typingInterval) clearInterval(typingInterval)
   }
 }

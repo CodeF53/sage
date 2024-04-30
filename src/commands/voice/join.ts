@@ -1,7 +1,8 @@
 import type { ChatInputCommandInteraction, InteractionResponse, VoiceBasedChannel } from 'discord.js'
-import { SlashCommandBuilder } from 'discord.js'
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
 import { joinVoiceChannel } from '@discordjs/voice'
 import { Player } from '../../voiceHandler'
+import { guildDB } from '../../dynamicConfig'
 
 export const data = new SlashCommandBuilder()
   .setName('join')
@@ -20,8 +21,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 export async function getVC(interaction: ChatInputCommandInteraction, assert = false): Promise<Player | InteractionResponse> {
   if (!interaction.guild)
     return interaction.reply({ content: 'not in a server', ephemeral: true })
-
   const guild = interaction.guild
+  if (!guildDB.getKey(guild.id).vc) {
+    const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+    return interaction.reply({ content: `VC is disabled in this server, try ${isAdmin ? '`/config set vc true`' : 'contacting an admin'}`, ephemeral: true })
+  }
+
   const existingPlayer = Player.getPlayer(guild.id)
 
   if (!assert) {

@@ -20,6 +20,8 @@ All configs can be found in either:
 
 You can run more than one bot at once by creating more in `./configs/`
 
+Features are toggled per-server with `/config`
+
 ## LLM setup
 1. Install [Ollama](https://github.com/jmorganca/ollama)
 2. Download an model ex: `ollama pull dolphin-mistral`
