@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import type { ChatInputCommandInteraction } from 'discord.js'
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
-import { guildDB } from '../dynamicConfig'
+import { getConfig } from '../dynamicConfig'
 
 const sdURL = process.env.SD_URL!
 const defaultPrompt = process.env.SD_PROMPT!
@@ -47,7 +47,7 @@ function formatImages(images: string[]) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  if (interaction.guild && !guildDB.getKey(interaction.guild.id).generate) {
+  if (interaction.guild && !getConfig(interaction.guild.id).generate) {
     const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
     return interaction.reply({ content: `image generation is disabled in this server, try ${isAdmin ? '`/config set generate true`' : 'contacting an admin'}`, ephemeral: true })
   }

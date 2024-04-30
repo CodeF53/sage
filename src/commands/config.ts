@@ -1,6 +1,6 @@
 import type { APIEmbedField, ChatInputCommandInteraction } from 'discord.js'
 import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
-import { configKeys, guildDB } from '../dynamicConfig'
+import { configKeys, getConfig, guildDB } from '../dynamicConfig'
 
 export const data = new SlashCommandBuilder()
   .setName('config')
@@ -28,7 +28,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return interaction.reply({ content: 'all functionality is enabled in dms', ephemeral: true })
 
   const guild = interaction.guild
-  const guildConfig = guildDB.getKey(guild.id)
+  const guildConfig = getConfig(guild.id)
 
   const subCommand = interaction.options.getSubcommand()
   if (subCommand === 'set') {

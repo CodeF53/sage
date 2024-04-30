@@ -6,7 +6,7 @@ import { generate } from './ollama'
 import { Player } from './voiceHandler'
 import { ttsQueue } from './commands/voice/tts'
 import { getMessageContext, replySplitMessage } from './util'
-import { guildDB } from './dynamicConfig'
+import { getConfig } from './dynamicConfig'
 
 export async function handleMessage(message: Message) {
   // ephemeral messages sometimes trigger this and we don't really care
@@ -14,7 +14,7 @@ export async function handleMessage(message: Message) {
   catch { return }
 
   // prevent talking where disabled
-  if (message.guild && !guildDB.getKey(message.guild.id).llm)
+  if (message.guild && !getConfig(message.guild.id).llm)
     return
 
   // ignore dumb messages
@@ -106,7 +106,7 @@ export async function aiRespond(message: Message) {
     if (message.content.match(myMention))
       shouldReply = true
     // - randomly when I am in a server that allows that
-    if (message.guild && guildDB.getKey(message.guild.id).randomMessages && Math.random() < 0.01)
+    if (message.guild && getConfig(message.guild.id).randomMessages && Math.random() < 0.01)
       shouldReply = true
     if (!shouldReply)
       return

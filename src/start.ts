@@ -4,7 +4,7 @@ import setupCommands from './setupCommands'
 import { getClient } from './setupClient'
 import { exitAllVCs } from './voiceHandler'
 import { handleMessage } from './aiRespond'
-import { initDB } from './dynamicConfig.ts'
+import { guildDB, initDB } from './dynamicConfig.ts'
 
 export const client = await getClient()
 initDB(client)
@@ -17,6 +17,7 @@ process.on('uncaughtException', console.error)
 async function handleExit() {
   exitAllVCs()
   await client.destroy()
+  guildDB.save()
   setTimeout(() => process.exit(0), 0)
 }
 process.on('exit', handleExit)
