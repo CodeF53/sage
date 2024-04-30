@@ -15,6 +15,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('words')
       .setMaxLength(1_000)
       .setRequired(true))
+      .setDMPermission(false)
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction, true)

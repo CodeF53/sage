@@ -14,6 +14,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('youtube url')
       .setMaxLength(255)
       .setRequired(true))
+      .setDMPermission(false)
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction, true)

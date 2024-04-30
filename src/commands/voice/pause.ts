@@ -7,6 +7,7 @@ import { getVC } from './join'
 export const data = new SlashCommandBuilder()
   .setName('pause')
   .setDescription('pause the current audio')
+  .setDMPermission(false)
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction)

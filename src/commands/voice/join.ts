@@ -6,6 +6,7 @@ import { Player } from '../../voiceHandler'
 export const data = new SlashCommandBuilder()
   .setName('join')
   .setDescription('join your current voice channel')
+  .setDMPermission(false)
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const player = await getVC(interaction, true)
