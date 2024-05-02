@@ -1,7 +1,7 @@
 import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@discordjs/voice'
 import type { TextBasedChannel } from 'discord.js'
-import type { MoreVideoDetails } from 'ytdl-core'
+import type { YouTubeVideo } from 'play-dl'
 import { ttsQueue } from './commands/voice/tts'
 
 const IDLE_TIMEOUT = 300_000
@@ -37,8 +37,8 @@ export class Player {
     if (!audio) return this.createDisconnectTimeout()
 
     this.player.play(audio)
-    const metadata = audio.metadata as MoreVideoDetails
-    this.channel.send({ content: `Now playing ${metadata.title} (${metadata.lengthSeconds} seconds)` })
+    const metadata = audio.metadata as YouTubeVideo
+    this.channel.send({ content: `Now playing ${metadata.title} (${metadata.durationRaw})` })
   }
 
   ttsPlay() {
