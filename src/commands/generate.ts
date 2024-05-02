@@ -1,10 +1,18 @@
 import { Buffer } from 'node:buffer'
-import type { ChatInputCommandInteraction } from 'discord.js'
-import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
-import { getConfig } from '../dynamicConfig'
+import type { ChatInputCommandInteraction, CommandInteraction, Interaction, InteractionResponse, Message } from 'discord.js'
+import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
+import nsfwjs from 'nsfwjs'
+import * as tf from '@tensorflow/tfjs-node'
+import { type GuildConfig, getConfig } from '../dynamicConfig'
 
-const sdURL = process.env.SD_URL!
-const defaultPrompt = process.env.SD_PROMPT!
+const SD_URL = process.env.SD_URL!
+const SD_PROMPT = process.env.SD_PROMPT!
+const SD_BLACKLIST = process.env.SD_BLACKLIST!
+const SD_NSFW_TOLERANCE = Number(process.env.SD_NSFW_TOLERANCE!)
+const SD_NSFW_TAGS = process.env.SD_NSFW_TAGS!.split(',')
+const SD_SFW_TAGS = process.env.SD_SFW_TAGS!.split(',')
+const SD_BADLIST = process.env.SD_BADLIST!.split(',')
+const SD_CONFIG = JSON.parse(process.env.SD_CONFIG!) as { sampler_index: string, steps: number, cfg_scale: number, width: number, height: number }
 
 export const data = new SlashCommandBuilder()
   .setName('generate')
@@ -47,45 +55,104 @@ function formatImages(images: string[]) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  if (interaction.guild && !getConfig(interaction.guild.id).generate) {
+  const guildConfig = interaction.guild && getConfig(interaction.guild.id) as GuildConfig
+  if (interaction.guild && !guildConfig!.generate) {
     const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
     return interaction.reply({ content: `image generation is disabled in this server, try ${isAdmin ? '`/config set generate true`' : 'contacting an admin'}`, ephemeral: true })
   }
+  let userPrompt = interaction.options.getString('prompt', true)!.toLowerCase()
+  const userNegativePrompt = interaction.options.getString('negative_prompt') ?? ''
 
-  const prompt = interaction.options.getString('prompt', true)!
-  let negative_prompt = interaction.options.getString('negative_prompt') ?? ''
+  // prevent NSFW where it isn't wanted
+  const isDM = interaction.channel?.type === ChannelType.DM
+  const generateNSFW = isDM || (guildConfig!.generateNSFW && interaction.channel && !interaction.channel.isThread() && interaction.channel.nsfw)
+  if (!generateNSFW) {
+    let nsfwWarn = 'NSFW isn\'t allowed here, try DMing me'
+    if (guildConfig!.generateNSFW) nsfwWarn += ' or using an NSFW channel'
+    for (const tag of SD_NSFW_TAGS)
+      if (userPrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
+    for (const tag of SD_SFW_TAGS)
+      if (userNegativePrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
+  }
+  // prevent horrible stuff from ever being generated
+  for (const tag of SD_BADLIST)
+    userPrompt = userPrompt.replaceAll(tag, '')
 
-  // prevent generating nsfw unless explicitly requested
-  if (!/\bnsfw\b/i.test(prompt))
-    negative_prompt = `nsfw, nude, fully nude, partial nudity, explicit, ${negative_prompt}`
+  // join prompts with all additives
+  const promptArr = [SD_PROMPT, userPrompt]
+  const negativePromptArr = [SD_BLACKLIST, userNegativePrompt]
+  if (!generateNSFW) {
+    promptArr.push(...SD_SFW_TAGS)
+    negativePromptArr.push(...SD_NSFW_TAGS)
+  }
+  const prompt = promptArr.join(',')
+  const negativePrompt = negativePromptArr.join(',')
 
   const replyPromise = interaction.deferReply()
+  const resp = await generate(prompt, negativePrompt, interaction.options)
+  let reply: InteractionResponse | Message<false> = await replyPromise
+  if (!resp) return reply.edit({ content: 'Generation error, server may be down' })
+  const { images, info } = resp
 
-  const resp = await fetch(`${sdURL}/sdapi/v1/txt2img`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: `${defaultPrompt}, ${prompt}`,
-      negative_prompt: `${negative_prompt}, loli, child, young`,
-      steps: 8,
-      cfg_scale: 3,
-      seed: interaction.options.getNumber('seed') ?? -1,
-      width: interaction.options.getNumber('width') ?? 1024,
-      height: interaction.options.getNumber('height') ?? 1024,
-      batch_size: interaction.options.getNumber('quantity') ?? 1,
-      sampler_index: 'Euler A SGMUniform',
-      send_images: true,
-      save_images: false,
-    }),
-  })
-  const data: any = await resp.json()
-  const { images } = data
-  const info = JSON.parse(data.info)
+  // DM user response we somehow manged to generate NSFW in SFW context
+  if (!generateNSFW) {
+    reply.edit({ content: 'ensuring content safety...' })
+    if (await checkNSFW(images)) {
+      reply.edit({ content: 'I can\'t send that here, check your dms' })
+        .then(() => setTimeout(() => interaction.deleteReply(), 3000))
+      const dmReply = await interaction.user.send({ content: 'loading' })
+      if (dmReply) reply = dmReply
+    }
+  }
 
-  let content = `\`${prompt}\`\nseed(s): [${info.all_seeds}]`
+  let content = `\`${userPrompt}\`\nseed(s): [${info.all_seeds}]`
   if ((interaction.options.getString('negative_prompt') ?? '').length > 0)
-    content += `\n\nnegative: \`${negative_prompt}\``
-
-  const reply = await replyPromise
+    content += `\n\nnegative: \`${userNegativePrompt}\``
   reply.edit({ content, files: formatImages(images) })
+}
+
+async function generate(prompt: string, negative_prompt: string, options: ChatInputCommandInteraction['options']): Promise<false | { images: string[], info: any }> {
+  try {
+    const resp = await fetch(`${SD_URL}/sdapi/v1/txt2img`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...SD_CONFIG,
+        width: options.getNumber('width') ?? SD_CONFIG.width,
+        height: options.getNumber('height') ?? SD_CONFIG.height,
+        seed: options.getNumber('seed') ?? -1,
+        batch_size: options.getNumber('quantity') ?? 1,
+        prompt,
+        negative_prompt,
+        send_images: true,
+        save_images: false,
+      }),
+    })
+    const data: any = await resp.json()
+    const images = data.images as string[]
+    const info = JSON.parse(data.info)
+    return { images, info }
+  }
+  catch (error) {
+    console.error(error)
+    return false
+  }
+}
+
+tf.enableProdMode()
+const nsfwClassifier = await nsfwjs.load('MobileNetV2')
+// true if classifier is confident its porn/hentai
+async function checkNSFW(images: string[]): Promise<boolean> {
+  for (const image of images) {
+    const tensors = tf.node.decodeImage(Buffer.from(image, 'base64'))
+    const classification = await nsfwClassifier.classify(tensors)
+    for (const category of classification) {
+      const { className, probability } = category
+      if (!['Hentai', 'Porn'].includes(className))
+        continue
+      if (probability > SD_NSFW_TOLERANCE)
+        return true
+    }
+  }
+  return false
 }

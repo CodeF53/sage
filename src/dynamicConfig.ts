@@ -3,11 +3,12 @@ import { type Client, Events } from 'discord.js'
 
 export const guildDB: flatCache.Cache = flatCache.load(`${process.env.BOT_NAME}guildDB`)
 
-export const configKeys = ['vc', 'generate', 'llm', 'randomMessages']
+export const configKeys = ['vc', 'generate', 'generateNSFW', 'llm', 'randomMessages']
 type ConfigKey = typeof configKeys[number]
 const defaultConfig: Record<ConfigKey, boolean> = {
   vc: true,
   generate: true,
+  generateNSFW: false,
   llm: true,
   randomMessages: false,
 }
