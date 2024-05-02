@@ -21,7 +21,7 @@ export async function generate(messages: LLMMessage[], username: string) {
       prompt,
       stream: false,
       options: {
-        stop: [LLM_START_TAG, LLM_END_TAG, '{{ end }}', '\n\n@', '\n\nundefined:'],
+        stop: [LLM_START_TAG, LLM_END_TAG, '{{ end }}', '\n@', '\nundefined:'],
       },
     }),
     headers: { 'Content-Type': 'application/json' },
