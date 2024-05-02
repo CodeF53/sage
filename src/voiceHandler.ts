@@ -1,6 +1,6 @@
 import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@discordjs/voice'
-import type { Message, TextBasedChannel } from 'discord.js'
+import { EmbedBuilder, type Message, type TextBasedChannel } from 'discord.js'
 import type { YouTubeVideo } from 'play-dl'
 import { ttsQueue } from './commands/voice/tts'
 
@@ -13,6 +13,7 @@ export class Player {
   }
 
   player = createAudioPlayer()
+  nowPlaying: YouTubeVideo | undefined
   queue: AudioResource[] = []
   ttsPlayer = createAudioPlayer()
   ttsQueue: AudioResource[] = []
@@ -24,6 +25,7 @@ export class Player {
 
     // play next song when player goes idle
     this.player.on('stateChange', (_, { status }) => {
+      this.updateEmbed()
       if (status === AudioPlayerStatus.Idle) this.play()
     })
     this.ttsPlayer.on('stateChange', (_, { status }) => {
@@ -33,18 +35,13 @@ export class Player {
     Player.voiceChannels[guildId] = this
   }
 
-  async play() {
-    if (this.musicStatusMessage) {
-      this.musicStatusMessage.delete()
-      this.musicStatusMessage = undefined
-    }
-
+  play() {
     const audio = this.queue.shift()
     if (!audio) return this.createDisconnectTimeout()
 
     this.player.play(audio)
-    const metadata = audio.metadata as YouTubeVideo
-    this.musicStatusMessage = await this.channel.send({ content: `Now playing ${metadata.title} (${metadata.durationRaw})` })
+    this.nowPlaying = audio.metadata as YouTubeVideo
+    this.updateEmbed()
   }
 
   ttsPlay() {
@@ -95,6 +92,29 @@ export class Player {
     this.vc.destroy()
     if (Player.voiceChannels[this.guildId])
       delete Player.voiceChannels[this.guildId]
+  }
+
+  async updateEmbed() {
+    if (this.musicStatusMessage && this.player.state.status !== AudioPlayerStatus.Playing) {
+      this.nowPlaying = undefined
+      this.musicStatusMessage.delete()
+      this.musicStatusMessage = undefined
+    }
+    const song = this.nowPlaying
+    if (!song) return
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFF9900)
+      .setTitle(song.title!.toString())
+      .setThumbnail(song.thumbnails[0].url)
+    if (song.channel) embed.setAuthor({ name: song.channel.name!, iconURL: song.channel.icons![0].url })
+    if (song.description) embed.setDescription(song.description)
+
+    // TODO: add progressbar
+    // TODO: add skip button
+    // TODO: add queue preview
+
+    this.musicStatusMessage = await this.channel.send({ embeds: [embed] })
   }
 }
 
