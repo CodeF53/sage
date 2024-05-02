@@ -10,6 +10,7 @@ const SD_PROMPT = process.env.SD_PROMPT!
 const SD_BLACKLIST = process.env.SD_BLACKLIST!
 const SD_NSFW_TOLERANCE = Number(process.env.SD_NSFW_TOLERANCE!)
 const SD_NSFW_TAGS = process.env.SD_NSFW_TAGS!.split(',')
+const SD_NSFW_SPLIT_TAGS = process.env.SD_NSFW_SPLIT_TAGS!.split(',')
 const SD_SFW_TAGS = process.env.SD_SFW_TAGS!.split(',')
 const SD_BADLIST = process.env.SD_BADLIST!.split(',')
 const SD_CONFIG = JSON.parse(process.env.SD_CONFIG!) as { sampler_index: string, steps: number, cfg_scale: number, width: number, height: number }
@@ -69,7 +70,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!generateNSFW) {
     let nsfwWarn = 'NSFW isn\'t allowed here, try DMing me'
     if (guildConfig!.generateNSFW) nsfwWarn += ' or using an NSFW channel'
-    for (const tag of SD_NSFW_TAGS)
+    for (const tag of [...SD_NSFW_TAGS, ...createVariations(SD_NSFW_SPLIT_TAGS)])
       if (userPrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
     for (const tag of SD_SFW_TAGS)
       if (userNegativePrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
@@ -83,7 +84,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const negativePromptArr = [SD_BLACKLIST, userNegativePrompt]
   if (!generateNSFW) {
     promptArr.push(...SD_SFW_TAGS)
-    negativePromptArr.push(...SD_NSFW_TAGS)
+    negativePromptArr.push(...SD_NSFW_TAGS, ...SD_NSFW_SPLIT_TAGS)
   }
   const prompt = promptArr.join(',')
   const negativePrompt = negativePromptArr.join(',')
@@ -137,6 +138,17 @@ async function generate(prompt: string, negative_prompt: string, options: ChatIn
     console.error(error)
     return false
   }
+}
+
+// split tags are dumb, blowjob, blow job, and blow-job all work
+// takes input of "blow job" and creates all variations
+function createVariations(strings: string[]): string[] {
+  const out = [...strings]
+  for (const string of strings) {
+    const words = string.split(' ')
+    out.push(words.join(''), words.join('-'))
+  }
+  return out
 }
 
 tf.enableProdMode()
