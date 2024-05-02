@@ -1,6 +1,6 @@
 import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@discordjs/voice'
-import type { TextBasedChannel } from 'discord.js'
+import type { Message, TextBasedChannel } from 'discord.js'
 import type { YouTubeVideo } from 'play-dl'
 import { ttsQueue } from './commands/voice/tts'
 
@@ -16,6 +16,7 @@ export class Player {
   queue: AudioResource[] = []
   ttsPlayer = createAudioPlayer()
   ttsQueue: AudioResource[] = []
+  musicStatusMessage: Message | undefined
 
   constructor(public vc: VoiceConnection, public channel: TextBasedChannel, public guildId: string, public vcId: string) {
     vc.subscribe(this.player)
@@ -32,13 +33,18 @@ export class Player {
     Player.voiceChannels[guildId] = this
   }
 
-  play() {
+  async play() {
+    if (this.musicStatusMessage) {
+      this.musicStatusMessage.delete()
+      this.musicStatusMessage = undefined
+    }
+
     const audio = this.queue.shift()
     if (!audio) return this.createDisconnectTimeout()
 
     this.player.play(audio)
     const metadata = audio.metadata as YouTubeVideo
-    this.channel.send({ content: `Now playing ${metadata.title} (${metadata.durationRaw})` })
+    this.musicStatusMessage = await this.channel.send({ content: `Now playing ${metadata.title} (${metadata.durationRaw})` })
   }
 
   ttsPlay() {
@@ -83,6 +89,8 @@ export class Player {
   }
 
   delete() {
+    if (this.musicStatusMessage)
+      this.musicStatusMessage.delete()
     this.clearDisconnectTimeout()
     this.vc.destroy()
     if (Player.voiceChannels[this.guildId])

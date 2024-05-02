@@ -14,9 +14,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!(player instanceof Player)) return
 
   if (player.status() !== AudioPlayerStatus.Paused)
-    return interaction.reply({ content: 'not paused' })
+    return interaction.reply({ content: 'not paused', ephemeral: true })
 
   player.clearDisconnectTimeout()
   player.activePlayer().unpause()
-  interaction.reply({ content: 'unpaused' })
+  interaction.reply({ content: 'unpaused', ephemeral: true })
 }

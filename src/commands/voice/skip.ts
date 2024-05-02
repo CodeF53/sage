@@ -14,8 +14,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!(player instanceof Player)) return
 
   if (player.status() !== AudioPlayerStatus.Playing)
-    return interaction.reply({ content: 'not playing audio' })
+    return interaction.reply({ content: 'not playing audio', ephemeral: true })
 
   player.activePlayer().stop()
-  interaction.reply({ content: 'skipped' })
+  interaction.reply({ content: 'skipped', ephemeral: true })
 }
