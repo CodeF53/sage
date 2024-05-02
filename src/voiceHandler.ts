@@ -25,7 +25,6 @@ export class Player {
 
     // play next song when player goes idle
     this.player.on('stateChange', (_, { status }) => {
-      this.updateEmbed()
       if (status === AudioPlayerStatus.Idle) this.play()
     })
     this.ttsPlayer.on('stateChange', (_, { status }) => {
