@@ -36,6 +36,10 @@ export class Player {
   }
 
   play() {
+    if (this.musicStatusMessage) {
+      this.musicStatusMessage.delete()
+      this.musicStatusMessage = undefined
+    }
     const audio = this.queue.shift()
     if (!audio) return this.createDisconnectTimeout()
 
