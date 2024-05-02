@@ -13,7 +13,6 @@
     "@tensorflow/tfjs": "^4.19.0",
     "@tensorflow/tfjs-node": "^4.19.0",
     "audio-decode": "^2.2.0",
-    "base64-arraybuffer": "^1.0.2",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "edge-tts": "^1.0.1",
@@ -22,8 +21,7 @@
     "nsfwjs": "^4.1.0",
     "opusscript": "^0.1.1",
     "play-dl": "^1.9.7",
-    "recursive-readdir": "^2.2.3",
-    "ytdl-core": "^4.11.5"
+    "recursive-readdir": "^2.2.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.12.1",
