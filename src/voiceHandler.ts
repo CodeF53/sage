@@ -18,7 +18,7 @@ export class Player {
   queue: AudioResource[] = []
   ttsPlayer = createAudioPlayer()
   ttsQueue: AudioResource[] = []
-  musicStatusMessage: Message | undefined
+  musicStatusMessage: Promise<Message> | undefined
 
   constructor(public vc: VoiceConnection, public channel: TextBasedChannel, public guildId: string, public vcId: string) {
     vc.subscribe(this.player)
@@ -85,47 +85,68 @@ export class Player {
     clearTimeout(this.disconnectTimeout)
   }
 
-  async delete() {
-    if (this.musicStatusMessage)
-      await this.musicStatusMessage.delete()
-    this.clearDisconnectTimeout()
-    this.vc.destroy()
-    if (Player.voiceChannels[this.guildId])
-      delete Player.voiceChannels[this.guildId]
-  }
-
   updateEmbed = debounce(async () => {
+    if (this.player.state.status === AudioPlayerStatus.Idle)
+      this.nowPlaying = undefined
     if (this.musicStatusMessage) {
-      await this.musicStatusMessage.delete()
-      this.musicStatusMessage = undefined
-      if (this.player.state.status !== AudioPlayerStatus.Playing)
-        return this.nowPlaying = undefined
+      const message = await this.musicStatusMessage
+      if (this.channel.lastMessageId !== message.id) {
+        await message.delete()
+        this.musicStatusMessage = undefined
+      }
     }
     const song = this.nowPlaying
     if (!song) return
 
     const embed = new EmbedBuilder()
       .setColor(0xFF9900)
-      .setTitle(`${song.title!.toString()} (${song.durationRaw})`)
+      .setTitle(`${song.title!.toString()}`)
       .setThumbnail(song.thumbnails[0].url)
       .setAuthor({ name: song.channel!.name!, iconURL: song.channel!.iconURL() })
 
+    const description = []
+    // progressbar
+    const playDuration = Number(this.player._state.playbackDuration) / 1000
+    const percent = playDuration / song.durationInSec
+    const leftLen = Math.floor(40 * percent)
+    const rightLen = Math.ceil(40 * (1 - percent))
+    const progressTime = `${formatTime(Math.round(playDuration))} / ${song.durationRaw}`
+    const progressBar = `${'━'.repeat(leftLen)}●${'─'.repeat(rightLen)}`
+    description.push(`\`(${progressTime}) ${progressBar}\``)
+
+    // queue
     if (this.queue.length > 0) {
       const queue = this.queue.map(a => a.metadata as YouTubeVideo)
       const queueList = queue.map((meta, i) => {
         const { title, durationRaw } = meta
         return `${i + 1}. ${title} (${durationRaw})`
       }).join('\n')
-      console.log(queue)
       const lengthSeconds = queue.reduce((a, c) => a + c.durationInSec, 0)
-      embed.setDescription(`**Queue** (${formatTime(lengthSeconds)}):\n${queueList}`)
+      description.push(`**Queue** (${formatTime(lengthSeconds)}):\n${queueList}`)
     }
 
-    // TODO: add progressbar
-    // TODO: add skip button
+    // TODO: add [pause/unpause, skip, back/forward 30 seconds] buttons
 
-    this.musicStatusMessage = await this.channel.send({ embeds: [embed] })
-  }, 500)
+    embed.setDescription(description.join('\n\n'))
+    if (!this.musicStatusMessage)
+      return this.musicStatusMessage = this.channel.send({ embeds: [embed], isInteraction: true })
+    const message = await this.musicStatusMessage
+    message.edit({ embeds: [embed] })
+  }, 250)
+
+  private updateInterval = setInterval(() => {
+    this.updateEmbed()
+  }, 5000)
+
+  async delete() {
+    this.clearDisconnectTimeout()
+    clearInterval(this.updateInterval)
+    if (this.musicStatusMessage)
+      await (await this.musicStatusMessage).delete()
+    this.vc.destroy()
+    if (Player.voiceChannels[this.guildId])
+      delete Player.voiceChannels[this.guildId]
+  }
 }
 
 export async function exitAllVCs() {

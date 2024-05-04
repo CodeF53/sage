@@ -90,9 +90,9 @@ export async function replySplitMessage(replyMessage: Message, content: string) 
   return replyMessages
 }
 
-export function debounce<T extends (...args: any[]) => void>(func: T, delay: number) {
+export function debounce(func: Function, delay: number) {
   let timer: Timer | null = null
-  return (...args: Parameters<T>) => {
+  return (...args: any[]) => {
     if (timer) clearTimeout(timer)
     timer = setTimeout(async () => {
       await func(...args)

@@ -21,21 +21,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!(player instanceof Player)) return
 
   const replyPromise = interaction.deferReply({ ephemeral: true })
-  setTimeout(() => { interaction.deleteReply() }, 60_000)
+  const yeetTimeout = setTimeout(() => { interaction.deleteReply() }, 60_000)
 
   player.clearDisconnectTimeout()
   const query = interaction.options.getString('query')!
-  const search: YouTubeVideo[] = []
+  let search: YouTubeVideo[] = []
   if (query.startsWith('https://youtu'))
     search.push((await play.video_basic_info(query)).video_details)
   else
     search.push(...await play.search(query, { limit: 5, source: { youtube: 'video' } }))
-  search.filter(hasNeededData)
+  search = search.filter(hasNeededData)
 
   if (search.length === 0)
     return interaction.editReply({ content: `Could not find song for ${query}` })
   if (search.length === 1)
-    return playSong(search[0], player, interaction)
+    return playSong(search[0], player, interaction, yeetTimeout)
 
   // give user options to pick from if more than one search result
   const options = []
@@ -52,10 +52,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const reply = await replyPromise
   const collector = reply.createMessageComponentCollector({ componentType: ComponentType.StringSelect, time: 60_000 })
-  collector.once('collect', async (resp) => { playSong(search[Number(resp.values[0])], player, interaction) })
+  collector.once('collect', async (resp) => { playSong(search[Number(resp.values[0])], player, interaction, yeetTimeout) })
 }
 
-async function playSong(song: YouTubeVideo, player: Player, interaction: ChatInputCommandInteraction) {
+async function playSong(song: YouTubeVideo, player: Player, interaction: ChatInputCommandInteraction, yeetTimeout: Timer) {
   interaction.editReply({ content: `Getting audio for ${song.title}`, components: [] })
 
   const stream = await play.stream(song.url)
@@ -63,11 +63,16 @@ async function playSong(song: YouTubeVideo, player: Player, interaction: ChatInp
   resource.playbackDuration = song.durationInSec * 1_000
   resource.metadata = song as any
 
+  clearTimeout(yeetTimeout)
   player.queue.push(resource)
-  if (player.status() === AudioPlayerStatus.Idle) { player.play() }
+  if (player.status() === AudioPlayerStatus.Idle) {
+    player.play()
+    interaction.deleteReply()
+  }
   else {
     player.updateEmbed()
     interaction.editReply({ content: `Queued ${song.title} (${song.durationRaw})` })
+    setTimeout(() => { interaction.deleteReply() }, 5_000)
   }
 }
 
