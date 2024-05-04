@@ -98,6 +98,7 @@ export class Player {
     const song = this.nowPlaying
     if (!song) {
       (await this.musicStatusMessage)?.delete()
+      this.musicStatusMessage = undefined
       return
     }
 
@@ -132,7 +133,8 @@ export class Player {
 
     // TODO: add [pause/unpause, skip, back/forward 30 seconds] buttons
 
-    embed.setDescription(description.join('\n\n'))
+    if (description.length > 0)
+      embed.setDescription(description.join('\n\n'))
     if (!this.musicStatusMessage)
       return this.musicStatusMessage = this.channel.send({ embeds: [embed] })
     const message = await this.musicStatusMessage
@@ -146,7 +148,11 @@ export class Player {
   async delete() {
     this.clearDisconnectTimeout()
     clearInterval(this.updateInterval)
-    try { if (this.musicStatusMessage) await (await this.musicStatusMessage)?.delete() }
+    try {
+      if (this.musicStatusMessage)
+        await (await this.musicStatusMessage).delete()
+      this.musicStatusMessage = undefined
+    }
     catch {}
     this.vc.destroy()
     if (Player.voiceChannels[this.guildId])

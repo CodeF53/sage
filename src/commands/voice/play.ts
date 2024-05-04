@@ -23,7 +23,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const replyPromise = interaction.deferReply({ ephemeral: true })
   const yeetTimeout = setTimeout(() => { interaction.deleteReply() }, 60_000)
 
-  player.clearDisconnectTimeout()
+  player.createDisconnectTimeout()
   const query = interaction.options.getString('query')!
   let search: YouTubeVideo[] = []
   if (query.startsWith('https://youtu'))
@@ -58,6 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 async function playSong(song: YouTubeVideo, player: Player, interaction: ChatInputCommandInteraction, yeetTimeout: Timer) {
   interaction.editReply({ content: `Getting audio for ${song.title}`, components: [] })
 
+  player.clearDisconnectTimeout()
   const stream = await play.stream(song.url)
   const resource = createAudioResource(stream.stream, { inputType: stream.type })
   resource.playbackDuration = song.durationInSec * 1_000
