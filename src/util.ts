@@ -89,3 +89,21 @@ export async function replySplitMessage(replyMessage: Message, content: string) 
     replyMessages.push(await replyMessage.channel.send(responseMessages[i]))
   return replyMessages
 }
+
+export function debounce<T extends (...args: any[]) => void>(func: T, delay: number) {
+  let timer: Timer | null = null
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(async () => {
+      await func(...args)
+      timer = null
+    }, delay)
+  }
+}
+
+export function formatTime(seconds: number) {
+  const d = (new Date(0))
+  d.setSeconds(seconds)
+  const a = d.toISOString().substring(11, 19)
+  return /[^0]*\d{1}:\d{2}$/.exec(a)![0]
+}

@@ -3,6 +3,7 @@ import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@di
 import { EmbedBuilder, type Message, type TextBasedChannel } from 'discord.js'
 import type { YouTubeVideo } from 'play-dl'
 import { ttsQueue } from './commands/voice/tts'
+import { debounce, formatTime } from './util'
 
 const IDLE_TIMEOUT = 300_000
 const LEAVE_MESSAGES = ['y\'all boring as fuck, I\'m out', 'I am gonna go crank my hog', 'brb gotta go beat my wife', 'I gotta shid']
@@ -25,6 +26,7 @@ export class Player {
 
     // play next song when player goes idle
     this.player.on('stateChange', (_, { status }) => {
+      this.updateEmbed()
       if (status === AudioPlayerStatus.Idle) this.play()
     })
     this.ttsPlayer.on('stateChange', (_, { status }) => {
@@ -35,16 +37,11 @@ export class Player {
   }
 
   play() {
-    if (this.musicStatusMessage) {
-      this.musicStatusMessage.delete()
-      this.musicStatusMessage = undefined
-    }
     const audio = this.queue.shift()
     if (!audio) return this.createDisconnectTimeout()
 
     this.player.play(audio)
     this.nowPlaying = audio.metadata as YouTubeVideo
-    this.updateEmbed()
   }
 
   ttsPlay() {
@@ -88,40 +85,49 @@ export class Player {
     clearTimeout(this.disconnectTimeout)
   }
 
-  delete() {
+  async delete() {
     if (this.musicStatusMessage)
-      this.musicStatusMessage.delete()
+      await this.musicStatusMessage.delete()
     this.clearDisconnectTimeout()
     this.vc.destroy()
     if (Player.voiceChannels[this.guildId])
       delete Player.voiceChannels[this.guildId]
   }
 
-  async updateEmbed() {
-    if (this.musicStatusMessage && this.player.state.status !== AudioPlayerStatus.Playing) {
-      this.nowPlaying = undefined
-      this.musicStatusMessage.delete()
+  updateEmbed = debounce(async () => {
+    if (this.musicStatusMessage) {
+      await this.musicStatusMessage.delete()
       this.musicStatusMessage = undefined
+      if (this.player.state.status !== AudioPlayerStatus.Playing)
+        return this.nowPlaying = undefined
     }
     const song = this.nowPlaying
     if (!song) return
 
     const embed = new EmbedBuilder()
       .setColor(0xFF9900)
-      .setTitle(song.title!.toString())
+      .setTitle(`${song.title!.toString()} (${song.durationRaw})`)
       .setThumbnail(song.thumbnails[0].url)
-    if (song.channel) embed.setAuthor({ name: song.channel.name!, iconURL: song.channel.icons![0].url })
-    if (song.description) embed.setDescription(song.description)
+      .setAuthor({ name: song.channel!.name!, iconURL: song.channel!.iconURL() })
+
+    if (this.queue.length > 0) {
+      const queue = this.queue.map(a => a.metadata as YouTubeVideo)
+      const queueList = queue.map((meta, i) => {
+        const { title, durationRaw } = meta
+        return `${i + 1}. ${title} (${durationRaw})`
+      }).join('\n')
+      console.log(queue)
+      const lengthSeconds = queue.reduce((a, c) => a + c.durationInSec, 0)
+      embed.setDescription(`**Queue** (${formatTime(lengthSeconds)}):\n${queueList}`)
+    }
 
     // TODO: add progressbar
     // TODO: add skip button
-    // TODO: add queue preview
 
     this.musicStatusMessage = await this.channel.send({ embeds: [embed] })
-  }
+  }, 500)
 }
 
-export function exitAllVCs() {
-  for (const player of Object.values(Player.voiceChannels))
-    player.delete()
+export async function exitAllVCs() {
+  await Promise.all(Object.values(Player.voiceChannels).map(player => player.delete()))
 }

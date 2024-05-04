@@ -29,7 +29,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (query.startsWith('https://youtu'))
     search.push((await play.video_basic_info(query)).video_details)
   else
-    search.push(...await play.search(query, { limit: 10, source: { youtube: 'video' } }))
+    search.push(...await play.search(query, { limit: 5, source: { youtube: 'video' } }))
+  search.filter(hasNeededData)
 
   if (search.length === 0)
     return interaction.editReply({ content: `Could not find song for ${query}` })
@@ -59,10 +60,21 @@ async function playSong(song: YouTubeVideo, player: Player, interaction: ChatInp
 
   const stream = await play.stream(song.url)
   const resource = createAudioResource(stream.stream, { inputType: stream.type })
-  resource.playbackDuration = Number(song.durationInSec) * 1_000
+  resource.playbackDuration = song.durationInSec * 1_000
   resource.metadata = song as any
 
   player.queue.push(resource)
-  if (player.status() === AudioPlayerStatus.Idle) player.play()
-  else interaction.editReply({ content: `Queued ${song.title} (${song.durationRaw})` })
+  if (player.status() === AudioPlayerStatus.Idle) { player.play() }
+  else {
+    player.updateEmbed()
+    interaction.editReply({ content: `Queued ${song.title} (${song.durationRaw})` })
+  }
+}
+
+function hasNeededData(song: YouTubeVideo): boolean {
+  for (const key of ['durationInSec', 'title', 'channel', 'thumbnails'] as (keyof YouTubeVideo)[])
+    if (!song[key]) return false
+  if (!song.thumbnails[0])
+    return false
+  return true
 }
