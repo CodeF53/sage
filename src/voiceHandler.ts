@@ -110,12 +110,14 @@ export class Player {
     const description = []
     // progressbar
     const playDuration = Number(this.player._state.playbackDuration) / 1000
-    const percent = playDuration / song.durationInSec
-    const leftLen = Math.floor(40 * percent)
-    const rightLen = Math.ceil(40 * (1 - percent))
-    const progressTime = `${formatTime(Math.round(playDuration))} / ${song.durationRaw}`
-    const progressBar = `${'━'.repeat(leftLen)}●${'─'.repeat(rightLen)}`
-    description.push(`\`(${progressTime}) ${progressBar}\``)
+    if (this.player._state.playbackDuration) {
+      const percent = playDuration / song.durationInSec
+      const leftLen = Math.floor(40 * percent)
+      const rightLen = Math.ceil(40 * (1 - percent))
+      const progressTime = `${formatTime(Math.round(playDuration))} / ${song.durationRaw}`
+      const progressBar = `${'━'.repeat(leftLen)}●${'─'.repeat(rightLen)}`
+      description.push(`\`(${progressTime}) ${progressBar}\``)
+    }
 
     // queue
     if (this.queue.length > 0) {
@@ -132,7 +134,7 @@ export class Player {
 
     embed.setDescription(description.join('\n\n'))
     if (!this.musicStatusMessage)
-      return this.musicStatusMessage = this.channel.send({ embeds: [embed], isInteraction: true })
+      return this.musicStatusMessage = this.channel.send({ embeds: [embed] })
     const message = await this.musicStatusMessage
     message.edit({ embeds: [embed] })
   }, 250)
@@ -144,8 +146,8 @@ export class Player {
   async delete() {
     this.clearDisconnectTimeout()
     clearInterval(this.updateInterval)
-    if (this.musicStatusMessage)
-      await (await this.musicStatusMessage).delete()
+    try { if (this.musicStatusMessage) await (await this.musicStatusMessage)?.delete() }
+    catch {}
     this.vc.destroy()
     if (Player.voiceChannels[this.guildId])
       delete Player.voiceChannels[this.guildId]
