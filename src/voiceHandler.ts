@@ -96,7 +96,10 @@ export class Player {
       }
     }
     const song = this.nowPlaying
-    if (!song) return
+    if (!song) {
+      (await this.musicStatusMessage)?.delete()
+      return
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0xFF9900)
