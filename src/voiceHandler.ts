@@ -91,8 +91,8 @@ export class Player {
     if (this.musicStatusMessage) {
       const message = await this.musicStatusMessage
       if (this.channel.lastMessageId !== message.id) {
-        await message.delete()
         this.musicStatusMessage = undefined
+        await message.delete()
       }
     }
     const song = this.nowPlaying

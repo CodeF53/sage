@@ -117,6 +117,8 @@ export async function aiRespond(message: Message) {
     if (!userVC) return
     const existingPlayer = Player.getPlayer(guild.id)
     if (!existingPlayer || userVC.id !== existingPlayer.vcId) return
+    // ensure bot won't leave while generating tts
+    existingPlayer.clearDisconnectTimeout()
     ttsQueue(existingPlayer, response)
   }
   catch (error) {

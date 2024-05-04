@@ -23,6 +23,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   // validate yap
   const text = interaction.options.getString('text')!
+  // ensure bot won't leave while generating tts
+  player.clearDisconnectTimeout()
   // queue yap
   ttsQueue(player, text, true)
 
@@ -30,9 +32,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 
 export async function ttsQueue(player: Player, text: string, sendInChat = false) {
-  // ensure bot won't leave while generating tts
-  player.clearDisconnectTimeout()
-
   // get audio to yap
   const audio = await tts(text)
   const { duration } = await decodeAudio(audio)
