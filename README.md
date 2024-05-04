@@ -1,3 +1,19 @@
+# Sage Bot
+A multifunction discord bot
+
+## Functionality
+All features can be enabled and disabled with `/config` \
+![Config set command](./githubMeta/config.png)
+
+Music and TTS \
+![Music player embed](./githubMeta/musicPlayer.png)
+
+Image Generation \
+![Image Generation Embed](./githubMeta/generate.png)
+
+AI Chatbot \
+![asking for some typescript code](./githubMeta/chatBot.png)
+
 ## Set-up instructions
 1. Install [Bun](https://bun.sh) and install dependencies with `bun i`
 2. [Create a Discord bot](https://discord.com/developers/applications)
@@ -11,7 +27,7 @@
   - `https://discord.com/oauth2/authorize?permissions=68608&scope=bot&client_id=`+`YOUR APP_ID`
 5. **TEMPORARY** install NodeJS and run `bun start-node`
     - Applies until bun gets [brotli compression](https://github.com/oven-sh/bun/issues/267) and [some `dgram` APIs](https://github.com/oven-sh/bun/issues/10381)
-6. start with `bun start`
+6. start with `bun start`![alt text](Discord_xoDwAxIE55.png)
 
 All configs can be found in either:
 - `.env` (Global Config)
