@@ -18,9 +18,6 @@ function upgradeConfig(guildId: string) {
   const current = guildDB.getKey(guildId) || {}
   const newConf = { ...defaultConfig, ...current }
   guildDB.setKey(guildId, newConf)
-  // save if updated
-  if (Object.keys(current).join() !== Object.keys(newConf).join())
-    guildDB.save()
   return { ...defaultConfig, ...current }
 }
 

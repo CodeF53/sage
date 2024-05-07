@@ -15,7 +15,7 @@ setupCommands(client)
 process.on('uncaughtException', console.error)
 // handle closing
 async function handleExit() {
-  guildDB.save()
+  guildDB.save(true)
   await Promise.all([
     exitAllVCs(),
     client.destroy(),

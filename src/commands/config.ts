@@ -35,7 +35,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const key = interaction.options.getString('option', true) as typeof configKeys[number]
     guildConfig[key] = interaction.options.getBoolean('value', true)
     guildDB.setKey(guild.id, guildConfig)
-    guildDB.save()
   }
 
   const fields: APIEmbedField[] = []
