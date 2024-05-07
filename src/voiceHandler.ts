@@ -1,9 +1,20 @@
 import type { AudioResource, VoiceConnection } from '@discordjs/voice'
 import { AudioPlayerStatus, VoiceConnectionStatus, createAudioPlayer } from '@discordjs/voice'
-import { EmbedBuilder, type Message, type TextBasedChannel } from 'discord.js'
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, type Message, type TextBasedChannel } from 'discord.js'
 import type { YouTubeVideo } from 'play-dl'
 import { ttsQueue } from './commands/voice/tts'
 import { debounce, formatTime } from './util'
+
+const buttons = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId('pause')
+    .setEmoji('⏯️')
+    .setStyle(ButtonStyle.Primary),
+  new ButtonBuilder()
+    .setCustomId('skip')
+    .setEmoji('⏭️')
+    .setStyle(ButtonStyle.Danger),
+)
 
 const IDLE_TIMEOUT = 300_000
 const LEAVE_MESSAGES = ['y\'all boring as fuck, I\'m out', 'I am gonna go crank my hog', 'brb gotta go beat my wife', 'I gotta shid']
@@ -131,14 +142,30 @@ export class Player {
       description.push(`**Queue** (${formatTime(lengthSeconds)}):\n${queueList}`)
     }
 
-    // TODO: add [pause/unpause, skip, back/forward 30 seconds] buttons
+    // TODO: add [back/forward 30 seconds] buttons
 
     if (description.length > 0)
       embed.setDescription(description.join('\n\n'))
-    if (!this.musicStatusMessage)
-      return this.musicStatusMessage = this.channel.send({ embeds: [embed] })
+    if (this.musicStatusMessage)
+      return (await this.musicStatusMessage).edit({ embeds: [embed], components: [buttons] })
+
+    this.musicStatusMessage = this.channel.send({ embeds: [embed], components: [buttons] })
     const message = await this.musicStatusMessage
-    message.edit({ embeds: [embed] })
+
+    const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 300_000 })
+
+    collector.on('collect', async (resp) => {
+      const { customId } = resp
+      resp.deferUpdate()
+      switch (customId) {
+        case 'pause':
+          if (this.status() === AudioPlayerStatus.Paused)
+            return this.activePlayer().unpause()
+          return this.activePlayer().pause()
+        case 'skip':
+          return this.activePlayer().stop()
+      }
+    })
   }, 250)
 
   private updateInterval = setInterval(() => {
