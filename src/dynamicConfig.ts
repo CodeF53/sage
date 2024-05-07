@@ -14,22 +14,13 @@ const defaultConfig: Record<ConfigKey, boolean> = {
 }
 export type GuildConfig = Record<ConfigKey, boolean>
 
-function upgradeConfig(guildId: string) {
-  const current = guildDB.getKey(guildId) || {}
-  const newConf = { ...defaultConfig, ...current }
-  guildDB.setKey(guildId, newConf)
-  return { ...defaultConfig, ...current }
-}
-
 export function getConfig(guildId: string) {
-  return upgradeConfig(guildId)
+  return { ...defaultConfig, ...guildDB.getKey(guildId) }
 }
 
 export function initDB(client: Client<true>) {
   // ensure guilds we're in have a config
   const guildIDs = client.guilds.cache.map(guild => guild.id)
-  guildIDs.forEach(upgradeConfig)
-  client.addListener(Events.GuildCreate, guild => upgradeConfig(guild.id))
 
   // yeet config for guilds we're no longer in
   for (const guildId of guildDB.keys())
