@@ -48,7 +48,5 @@ Features are toggled per-server with `/config`
 2. add `--api --nowebui` to `COMMANDLINE_ARGS` in `webui-user.sh`
 3. run it in the background whenever you run the bot
 
-NSFW generation is disabled by default in servers `/config set generateNSFW true` and use a NSFW channel, or generate in DMs instead
-
 ## Voice Channel Stuff
 1. [Install FFMPEG](https://ffmpeg.org)

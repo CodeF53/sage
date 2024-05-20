@@ -1,22 +1,17 @@
 import { Buffer } from 'node:buffer'
-import type { ChatInputCommandInteraction, CommandInteraction, Interaction, InteractionResponse, Message } from 'discord.js'
-import { ChannelType, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
-import nsfwjs from 'nsfwjs'
-import * as tf from '@tensorflow/tfjs-node'
+import type { ChatInputCommandInteraction, InteractionResponse, Message } from 'discord.js'
+import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
 import { type GuildConfig, getConfig } from '../dynamicConfig'
 
 const SD_URL = process.env.SD_URL!
 const SD_PROMPT = process.env.SD_PROMPT!
 const SD_BLACKLIST = process.env.SD_BLACKLIST!
-const SD_NSFW_TOLERANCE = Number(process.env.SD_NSFW_TOLERANCE!)
-const SD_NSFW_TAGS = process.env.SD_NSFW_TAGS!.split(',')
-const SD_NSFW_SPLIT_TAGS = process.env.SD_NSFW_SPLIT_TAGS!.split(',')
-const SD_SFW_TAGS = process.env.SD_SFW_TAGS!.split(',')
 const SD_BADLIST = process.env.SD_BADLIST!.split(',')
 const SD_CONFIG = JSON.parse(process.env.SD_CONFIG!) as { sampler_index: string, steps: number, cfg_scale: number, width: number, height: number }
 
 export const data = new SlashCommandBuilder()
   .setName('generate')
+  .setNSFW(true)
   .setDescription('Make beautiful art')
   .addStringOption(option =>
     option.setName('prompt')
@@ -64,17 +59,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   let userPrompt = interaction.options.getString('prompt', true)!.toLowerCase()
   const userNegativePrompt = interaction.options.getString('negative_prompt') ?? ''
 
-  // prevent NSFW where it isn't wanted
-  const isDM = interaction.channel?.type === ChannelType.DM
-  const generateNSFW = isDM || (guildConfig!.generateNSFW && interaction.channel && !interaction.channel.isThread() && interaction.channel.nsfw)
-  if (!generateNSFW) {
-    let nsfwWarn = 'NSFW isn\'t allowed here, try DMing me'
-    if (guildConfig!.generateNSFW) nsfwWarn += ' or using an NSFW channel'
-    for (const tag of [...SD_NSFW_TAGS, ...createVariations(SD_NSFW_SPLIT_TAGS)])
-      if (userPrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
-    for (const tag of SD_SFW_TAGS)
-      if (userNegativePrompt.includes(tag)) return interaction.reply({ content: nsfwWarn, ephemeral: true })
-  }
   // prevent horrible stuff from ever being generated
   for (const tag of SD_BADLIST)
     userPrompt = userPrompt.replaceAll(tag, '')
@@ -82,29 +66,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // join prompts with all additives
   const promptArr = [SD_PROMPT, userPrompt]
   const negativePromptArr = [SD_BLACKLIST, userNegativePrompt]
-  if (!generateNSFW) {
-    promptArr.push(...SD_SFW_TAGS)
-    negativePromptArr.push(...SD_NSFW_TAGS, ...SD_NSFW_SPLIT_TAGS)
-  }
   const prompt = promptArr.join(',')
   const negativePrompt = negativePromptArr.join(',')
 
   const replyPromise = interaction.deferReply()
   const resp = await generate(prompt, negativePrompt, interaction.options)
-  let reply: InteractionResponse | Message<false> = await replyPromise
+  const reply: InteractionResponse | Message<false> = await replyPromise
   if (!resp) return reply.edit({ content: 'Generation error, server may be down' })
   const { images, info } = resp
-
-  // DM user response we somehow manged to generate NSFW in SFW context
-  if (!generateNSFW) {
-    reply.edit({ content: 'ensuring content safety...' })
-    if (await checkNSFW(images)) {
-      reply.edit({ content: 'I can\'t send that here, check your dms' })
-        .then(() => setTimeout(() => interaction.deleteReply(), 3000))
-      const dmReply = await interaction.user.send({ content: 'loading' })
-      if (dmReply) reply = dmReply
-    }
-  }
 
   let content = `\`${userPrompt}\`\nseed(s): [${info.all_seeds}]`
   if ((interaction.options.getString('negative_prompt') ?? '').length > 0)
@@ -138,33 +107,4 @@ async function generate(prompt: string, negative_prompt: string, options: ChatIn
     console.error(error)
     return false
   }
-}
-
-// split tags are dumb, blowjob, blow job, and blow-job all work
-// takes input of "blow job" and creates all variations
-function createVariations(strings: string[]): string[] {
-  const out = [...strings]
-  for (const string of strings) {
-    const words = string.split(' ')
-    out.push(words.join(''), words.join('-'))
-  }
-  return out
-}
-
-tf.enableProdMode()
-const nsfwClassifier = await nsfwjs.load('MobileNetV2')
-// true if classifier is confident its porn/hentai
-async function checkNSFW(images: string[]): Promise<boolean> {
-  for (const image of images) {
-    const tensors = tf.node.decodeImage(Buffer.from(image, 'base64'))
-    const classification = await nsfwClassifier.classify(tensors)
-    for (const category of classification) {
-      const { className, probability } = category
-      if (!['Hentai', 'Porn'].includes(className))
-        continue
-      if (probability > SD_NSFW_TOLERANCE)
-        return true
-    }
-  }
-  return false
 }
