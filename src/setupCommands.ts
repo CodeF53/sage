@@ -10,6 +10,7 @@ const commandsDir = path.join(__dirname, 'commands')
 interface CommandFile {
   data: SlashCommandBuilder
   execute: (interaction: ChatInputCommandInteraction) => any
+  globalCommand?: true
 }
 function getCommandFiles(): Promise<CommandFile[]> {
   return new Promise((resolve) => {
@@ -27,7 +28,11 @@ function getCommandFiles(): Promise<CommandFile[]> {
 // sends discord the commands for autofill service
 // https://discordjs.guide/creating-your-bot/command-deployment.html
 async function registerCommands(commandFiles: CommandFile[]) {
-  const commands = commandFiles.map(c => c.data.toJSON())
+  const commands = commandFiles.map(c => {
+    let data = c.data.toJSON()
+    if (c.globalCommand) data = { ...data, integration_types: [0, 1], contexts: [0, 1, 2] }
+    return data
+  })
   try {
     console.log('Registering Commands...')
     const rest = new REST().setToken(process.env.TOKEN!)

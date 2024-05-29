@@ -42,6 +42,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('seed for RNG')
       .setMinValue(1)
       .setMaxValue(Number.MAX_SAFE_INTEGER))
+export const globalCommand = true
 
 function formatImages(images: string[], shouldSpoiler: boolean) {
   const out: { attachment: Buffer; name: string }[] = []
