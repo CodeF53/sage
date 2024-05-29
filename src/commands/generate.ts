@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import type { ChatInputCommandInteraction, InteractionResponse, Message } from 'discord.js'
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js'
-import { type GuildConfig, getConfig } from '../dynamicConfig'
+import { getConfig } from '../dynamicConfig'
 
 const SD_URL = process.env.SD_URL!
 const SD_PROMPT = process.env.SD_PROMPT!
@@ -43,16 +43,17 @@ export const data = new SlashCommandBuilder()
       .setMinValue(1)
       .setMaxValue(Number.MAX_SAFE_INTEGER))
 
-function formatImages(images: string[]) {
-  const out = []
-  for (const image of images)
-    out.push({ attachment: Buffer.from(image, 'base64') })
+function formatImages(images: string[], shouldSpoiler: boolean) {
+  const out: { attachment: Buffer; name: string }[] = []
+  images.forEach((image, i) => {
+    out.push({ attachment: Buffer.from(image, 'base64'), name: `${shouldSpoiler ? 'SPOILER_' : ''}${i}.png` })
+  })
   return out
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const guildConfig = interaction.guild && getConfig(interaction.guild.id) as GuildConfig
-  if (interaction.guild && !guildConfig!.generate) {
+  const isGuild = !!interaction.guild
+  if (isGuild && getConfig(interaction.guild.id).generate) {
     const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
     return interaction.reply({ content: `image generation is disabled in this server, try ${isAdmin ? '`/config set generate true`' : 'contacting an admin'}`, ephemeral: true })
   }
@@ -78,7 +79,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   let content = `\`${userPrompt}\`\nseed(s): [${info.all_seeds}]`
   if ((interaction.options.getString('negative_prompt') ?? '').length > 0)
     content += `\n\nnegative: \`${userNegativePrompt}\``
-  reply.edit({ content, files: formatImages(images) })
+
+  // spoiler nsfw generations in dms
+  let shouldSpoiler = false
+  if (!isGuild && (prompt.includes('nsfw') || prompt.includes('explicit')))
+    shouldSpoiler = true
+
+  reply.edit({ content, files: formatImages(images, shouldSpoiler) })
 }
 
 async function generate(prompt: string, negative_prompt: string, options: ChatInputCommandInteraction['options']): Promise<false | { images: string[], info: any }> {
